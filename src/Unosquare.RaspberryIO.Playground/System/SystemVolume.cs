@@ -1,4 +1,4 @@
-﻿namespace Unosquare.RaspberryIO.Playground
+namespace Unosquare.RaspberryIO.Playground
 {
     using System;
     using System.Threading.Tasks;
@@ -27,10 +27,10 @@
 
                 UpdateProgress(CurrentLevel);
 
-                Terminal.WriteLine("Press UpArrow key to increment volume");
-                Terminal.WriteLine("Press DownArrow key to decrement volume");
-                Terminal.WriteLine("Press M key to Mute on/off\n");
-                var key = Terminal.ReadKey("Press Esc key to continue . . .").Key;
+                Console.WriteLine("Press UpArrow key to increment volume");
+                Console.WriteLine("Press DownArrow key to decrement volume");
+                Console.WriteLine("Press M key to Mute on/off\n");
+                var key = Console.ReadKey().Key;
                 var validOption = false;
 
                 while (!validOption)

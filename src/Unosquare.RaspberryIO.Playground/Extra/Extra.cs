@@ -2,7 +2,6 @@ namespace Unosquare.RaspberryIO.Playground.Extra
 {
     using System;
     using System.Collections.Generic;
-    using Swan;
 
     public static partial class Extra
     {

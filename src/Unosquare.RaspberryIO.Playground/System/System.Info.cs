@@ -1,4 +1,4 @@
-﻿namespace Unosquare.RaspberryIO.Playground
+namespace Unosquare.RaspberryIO.Playground
 {
     using Computer;
     using Swan;
@@ -40,7 +40,7 @@
                 .ToList()
                 .ForEach(x => x.Info());
 
-            Terminal.WriteLine(ExitMessage);
+            Console.WriteLine(ExitMessage);
 
             while (true)
             {

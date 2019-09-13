@@ -1,4 +1,4 @@
-﻿namespace Unosquare.RaspberryIO.Playground
+namespace Unosquare.RaspberryIO.Playground
 {
     using Camera;
     using Swan;
@@ -43,9 +43,9 @@
         {
             Console.Clear();
 
-            var imageWidth = Terminal.ReadNumber("Set the image width:", 640);
-            var imageHeight = Terminal.ReadNumber("Set the image height:", 480);
-            var fileName = Terminal.ReadLine("Set the file name:");
+            var imageWidth = 0;
+            var imageHeight = 0;
+            var fileName = 0;
 
             Console.Clear();
 
@@ -59,7 +59,7 @@
             $"Date Created: {DateTime.Now:MM/dd/yyyy}".Info();
             $"At {DefaultPicturePath}\n".Info();
 
-            Terminal.WriteLine("Press Esc key to continue . . .");
+            Console.WriteLine("Press Esc key to continue . . .");
 
             while (true)
             {

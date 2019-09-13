@@ -1,7 +1,6 @@
-﻿namespace Unosquare.RaspberryIO.Playground.Peripherals
+namespace Unosquare.RaspberryIO.Playground.Peripherals
 {
     using System;
-    using Swan;
     using Swan.Logging;
     using Abstractions;
     using Unosquare.RaspberryIO.Peripherals;

@@ -1,8 +1,7 @@
-﻿namespace Unosquare.RaspberryIO.Playground.Peripherals
+namespace Unosquare.RaspberryIO.Playground.Peripherals
 {
     using System;
     using Abstractions;
-    using Swan;
     using Swan.Logging;
     using Unosquare.RaspberryIO.Peripherals;
 
@@ -37,7 +36,7 @@
 
                         var distance = e.Distance < 57 ? e.Distance : 58;
 
-                        Terminal.WriteLine($"{new string('█', (int)distance)}", color);
+                        Terminal.WriteLine($"{new string('█', (int)distance)}");
                         Terminal.WriteLine("--------------------------------------------------------->");
                         Terminal.WriteLine("          10        20        30        40        50       cm");
                         Terminal.WriteLine($"Obstacle detected at {e.Distance:N2}cm / {e.DistanceInch:N2}in\n");

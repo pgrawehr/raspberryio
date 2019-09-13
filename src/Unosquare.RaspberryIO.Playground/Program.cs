@@ -1,9 +1,8 @@
-﻿namespace Unosquare.RaspberryIO.Playground
+namespace Unosquare.RaspberryIO.Playground
 {
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
-    using Swan;
     using Swan.Logging;
     using WiringPi;
 
@@ -24,7 +23,7 @@
         /// Defines the entry point of the application.
         /// </summary>
         /// <returns>A task representing the program.</returns>
-        public static async Task Main()
+        public static void Main()
         {
             $"Starting program at {DateTime.Now}".Info();
 
@@ -39,7 +38,7 @@
                 switch (mainOption.Key)
                 {
                     case ConsoleKey.S:
-                        await SystemTests.ShowMenu().ConfigureAwait(false);
+                        SystemTests.ShowMenu();
                         break;
                     case ConsoleKey.P:
                         Peripherals.Peripherals.ShowMenu();
@@ -55,6 +54,7 @@
             while (!exit);
 
             Console.Clear();
+            Console.ResetColor();
         }
     }
 }

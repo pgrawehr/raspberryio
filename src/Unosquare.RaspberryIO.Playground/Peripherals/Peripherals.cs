@@ -1,8 +1,7 @@
-﻿namespace Unosquare.RaspberryIO.Playground.Peripherals
+namespace Unosquare.RaspberryIO.Playground.Peripherals
 {
     using System;
     using System.Collections.Generic;
-    using Swan;
 
     public static partial class Peripherals
     {
