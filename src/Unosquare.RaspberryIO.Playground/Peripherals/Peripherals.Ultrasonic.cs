@@ -7,6 +7,11 @@ namespace Unosquare.RaspberryIO.Playground.Peripherals
 
     public static partial class Peripherals
     {
+        /// <summary>
+        /// For this test, connect the ultrasonic sensor to pins 23 and 24.
+        /// See http://sensorkit.joy-it.net/index.php?title=KY-050_Ultraschallabstandssensor for a cabling diagram using the KY-050 sensor module
+        /// together with a KY-051 voltage translator. But note that this example uses GPIO.23 and GPIO.24 instead of GPIO.17 and GPIO.27 there. 
+        /// </summary>
         public static void TestUltrasonicSensor()
         {
             ConsoleColor color;
@@ -17,9 +22,11 @@ namespace Unosquare.RaspberryIO.Playground.Peripherals
                 {
                     Console.Clear();
 
-                    if (!e.IsValid) return;
-
-                    if (e.HasObstacles)
+                    if (!e.IsValid)
+                    {
+                        Terminal.WriteLine("Sensor could not be read (distance to close?).");
+                    }
+                    else if (e.HasObstacles)
                     {
                         if (e.Distance <= 10)
                             color = ConsoleColor.DarkRed;
@@ -36,14 +43,14 @@ namespace Unosquare.RaspberryIO.Playground.Peripherals
 
                         var distance = e.Distance < 57 ? e.Distance : 58;
 
-                        Terminal.WriteLine($"{new string('█', (int)distance)}");
-                        Terminal.WriteLine("--------------------------------------------------------->");
-                        Terminal.WriteLine("          10        20        30        40        50       cm");
-                        Terminal.WriteLine($"Obstacle detected at {e.Distance:N2}cm / {e.DistanceInch:N2}in\n");
+                        Terminal.Write($"{new string('█', (int)distance)}", color, true);
+                        Terminal.Write("--------------------------------------------------------->", color, true);
+                        Terminal.Write("          10        20        30        40        50       cm", color, true);
+                        Terminal.Write($"Obstacle detected at {e.Distance:N2}cm / {e.DistanceInch:N2}in", color, true);
                     }
                     else
                     {
-                        "No obstacles detected.\n".Info("HC - SR04");
+                        Terminal.WriteLine("No obstacles detected.");
                     }
 
                     Terminal.WriteLine(ExitMessage);
