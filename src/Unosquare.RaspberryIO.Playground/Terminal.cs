@@ -11,13 +11,7 @@ namespace Unosquare.RaspberryIO.Playground
     {
         static Terminal()
         {
-            OutputEncoding = Console.OutputEncoding;
             BorderColor = ConsoleColor.Green;
-        }
-        public static Encoding OutputEncoding
-        {
-            get;
-            set;
         }
 
         public static ConsoleColor BorderColor
@@ -129,36 +123,15 @@ namespace Unosquare.RaspberryIO.Playground
             return userInput;
         }
 
-        /// <summary>
-        /// Writes a character a number of times, optionally adding a new line at the end.
-        /// </summary>
-        /// <param name="charCode">The character code.</param>
-        /// <param name="color">The color.</param>
-        /// <param name="count">The count.</param>
-        /// <param name="newLine">if set to <c>true</c> [new line].</param>
-        public static void Write(byte charCode, ConsoleColor? color = null, int count = 1, bool newLine = false)
-        {
-            {
-                var bytes = new byte[count];
-                for (var i = 0; i < bytes.Length; i++)
-                {
-                    bytes[i] = charCode;
-                }
-
-                if (newLine)
-                {
-                    var newLineBytes = OutputEncoding.GetBytes(Environment.NewLine);
-                    bytes = bytes.Union(newLineBytes).ToArray();
-                }
-
-                var buffer = Encoding.ASCII.GetChars(bytes);
-                Console.Write(buffer);
-            }
-        }
-
         public static void Write(char code, ConsoleColor? color = null, int count = 1, bool newLine = false)
         {
+            var oldColor = Console.ForegroundColor;
+            if (color != null)
+            {
+                Console.ForegroundColor = color.Value;
+            }
             Console.Write(new String(code, count));
+            Console.ForegroundColor = oldColor;
         }
 
         /// <summary>
@@ -166,9 +139,20 @@ namespace Unosquare.RaspberryIO.Playground
         /// </summary>
         /// <param name="text">The characters.</param>
         /// <param name="color">The color.</param>
-        public static void Write(string text, ConsoleColor? color = null)
+        /// <param name="newLine">Add a newline at the end.</param>
+        public static void Write(string text, ConsoleColor? color = null, bool newLine = false)
         {
-            Console.Write(text);       
+            var oldColor = Console.ForegroundColor;
+            if (color != null)
+            {
+                Console.ForegroundColor = color.Value;
+            }
+            Console.Write(text);
+            if (newLine)
+            {
+                Console.WriteLine();
+            }
+            Console.ForegroundColor = oldColor;
         }
 
         /// <summary>
