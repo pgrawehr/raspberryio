@@ -32,6 +32,16 @@ namespace Unosquare.RaspberryIO.Playground
         }
 
         /// <summary>
+        /// Sets the cursor position.
+        /// </summary>
+        /// <param name="left">The left.</param>
+        /// <param name="top">The top.</param>
+        public static void SetCursorPosition(int left, int top)
+        {
+            Console.SetCursorPosition(left, top);
+        }
+
+        /// <summary>
         /// Creates a table prompt where the user can enter an option based on the options dictionary provided.
         /// </summary>
         /// <param name="title">The title.</param>
@@ -103,7 +113,7 @@ namespace Unosquare.RaspberryIO.Playground
                     Table.RightTee();
 
                     Table.Vertical();
-                    Write(string.Format(CultureInfo.CurrentCulture, textFormat, " Option:" ), ConsoleColor.Green);
+                    Write(string.Format(CultureInfo.CurrentCulture, textFormat, " Option: " ), ConsoleColor.Green);
                     Table.Vertical();
 
                     Table.BottomLeft();
@@ -112,6 +122,7 @@ namespace Unosquare.RaspberryIO.Playground
                 }
             }
 
+            SetCursorPosition(13, Console.CursorTop - 1);
             var userInput = Console.ReadKey(true);
             Write(userInput.Key.ToString(), ConsoleColor.Gray);
 
@@ -181,7 +192,7 @@ namespace Unosquare.RaspberryIO.Playground
 
             public static void Horizontal(int length) => Write('\u2500', BorderColor, length);
 
-            public static void Tee() => Write((byte)197, BorderColor);
+            public static void Tee() => Write('\u253c', BorderColor);
 
             public static void BottomRight() => Write('\u2518', BorderColor);
 

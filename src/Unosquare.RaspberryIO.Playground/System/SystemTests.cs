@@ -1,4 +1,4 @@
-﻿namespace Unosquare.RaspberryIO.Playground
+namespace Unosquare.RaspberryIO.Playground
 {
     using System;
     using System.Collections.Generic;
@@ -31,7 +31,7 @@
                         SystemCamera.ShowMenu();
                         break;
                     case ConsoleKey.I:
-                        await TestSystemInfo().ConfigureAwait(false);
+                        TestSystemInfo();
                         break;
                     case ConsoleKey.V:
                         await SystemVolume.ShowMenu().ConfigureAwait(false);

@@ -1,9 +1,9 @@
 namespace Unosquare.RaspberryIO.Playground
 {
+    using Swan.Logging;
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
-    using Swan.Logging;
     using WiringPi;
 
     /// <summary>
@@ -25,16 +25,17 @@ namespace Unosquare.RaspberryIO.Playground
         /// <returns>A task representing the program.</returns>
         public static void Main()
         {
-            $"Starting program at {DateTime.Now}".Info();
-
+            // We shouldn't be logging to the console in a console app that is user-interactive
+            Swan.Logging.Logger.UnregisterLogger<ConsoleLogger>();
             Pi.Init<BootstrapWiringPi>();
 
             var exit = false;
             do
             {
                 Console.Clear();
+                Console.CursorVisible = true;
                 var mainOption = Terminal.ReadPrompt("Main options", MainOptions, "Esc to exit this program");
-
+                Console.CursorVisible = true;
                 switch (mainOption.Key)
                 {
                     case ConsoleKey.S:
@@ -54,6 +55,7 @@ namespace Unosquare.RaspberryIO.Playground
             while (!exit);
 
             Console.Clear();
+            Console.CursorVisible = true;
             Console.ResetColor();
         }
     }
