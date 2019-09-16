@@ -12,15 +12,16 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
     /// <summary>
     /// Support for the Ads1115 Analog Digital Converter.
     /// Also available as pre-configured package KY-053 from joy-it.
+    /// See http://www.ti.com/lit/ds/symlink/ads1114.pdf for the full reference documentation of this chip.
     /// </summary>
     public class AdcAds1115 : IDisposable
     {
         private readonly object m_lock;
 
         // Read with 20Hz
-        private readonly TimeSpan ReadTime = TimeSpan.FromSeconds(0.05);
+        private readonly TimeSpan ReadTime = TimeSpan.FromSeconds(1);
         private bool m_disposed;
-        private CancellationTokenSource m_cancellationToken;
+        private CancellationTokenSource m_cancellationTokenSource;
         private float m_currentGain;
         private int m_currentGainCode;
         private int m_currentDataRateCode;
@@ -31,8 +32,9 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
         public const int ADS1X15_CONFIG_OS_SINGLE = (0x8000);
         public const int ADS1X15_CONFIG_MUX_OFFSET = (12);
         public const int ADS1X15_CONFIG_COMP_QUE_DISABLE = (0x0003);
-        private readonly List<(float, int)> m_configGainList = new List<(float, int)> {
-            (2f / 3f, 0x0000),
+        private readonly List<(float, int)> m_configGainList = new List<(float, int)>
+        {
+            (2f / 3f, 0x0000), // Note: This value is not useful with the raspberry, since the supply voltage is 3.3V (see page 17)
             (1,   0x0200),
             (2,   0x0400),
             (4,   0x0600),
@@ -130,7 +132,7 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
                 {
                     throw new InvalidOperationException("Sensor retrieve task is already running");
                 }
-                m_cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                m_cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 ReadWorker = new Thread(Run);
                 ReadWorker.Start();
             }
@@ -156,7 +158,7 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
             var timer = new HighResolutionTimer();
             var lastElapsedTime = TimeSpan.FromSeconds(0);
 
-            while (IsRunning)
+            while (!m_cancellationTokenSource.IsCancellationRequested)
             {
                 if (lastElapsedTime < ReadTime)
                 {
@@ -183,7 +185,7 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
         /// <returns> Data calculated by KY-053 ADC. </returns>
         private AdcEventArgs RetrieveSensorData()
         {
-            int p0 = Read(0, false);
+            double p0 = Read(2, false);
 
             return new AdcEventArgs(p0, 0, 0, 0);
         }
@@ -197,13 +199,15 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
             {
                 if (ReadWorker != null)
                 {
+                    m_cancellationTokenSource.Cancel();
                     ReadWorker.Join();
                     ReadWorker = null;
+                    m_cancellationTokenSource = null;
                 }
             }
         }
 
-        private int Read(int pin, bool isDifferential)
+        private double Read(int pin, bool isDifferential)
         {
             if (isDifferential)
             {
@@ -215,7 +219,7 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
             }
         }
 
-        private int Read(int pin)
+        private double Read(int pin)
         {
             int config = ADS1X15_CONFIG_OS_SINGLE;
             config |= (pin & 0x07) << ADS1X15_CONFIG_MUX_OFFSET;
@@ -227,10 +231,13 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
             // TODO: Add timeout
             while (!ConversionComplete())
             {
-                Thread.Sleep(1);
+                // This should be high for about 8us usually, but we should test this. Short sleep times are implemented using busy-wait
+                Pi.Timing.SleepMicroseconds(2); 
             }
 
-            return ReadWord(ADS1X15_POINTER_CONVERSION);
+            int rawValue = ReadWord(ADS1X15_POINTER_CONVERSION);
+            double value = rawValue * m_currentGain / short.MaxValue;
+            return value;
         }
 
         /// <summary>
@@ -246,15 +253,17 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
         }
 
         /// <summary>
-        /// Reads the word.
+        /// Reads a 16-bit Word. 
         /// </summary>
         /// <param name="register">The register.</param>
         /// <returns>System.Int32.</returns>
         private int ReadWord(int register)
         {
-            var h = Device.ReadAddressByte(register);
-            var l = Device.ReadAddressByte(register + 1);
-            return (h << 8) + l;
+            int h = Device.ReadAddressWord(register);
+            int h1 = (h & 0xFF) << 8;
+            int h2 = (h >> 8) & 0xFF;
+
+            return h1 | h2;
         }
 
         /// <summary>
