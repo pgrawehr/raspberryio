@@ -19,6 +19,7 @@ namespace Unosquare.RaspberryIO.Playground
                 Console.WriteLine($"ProcessorModel {Pi.Info.ProcessorModel}");
                 Console.WriteLine($"Manufacturer {Pi.Info.Manufacturer}");
                 Console.WriteLine($"MemorySize {Pi.Info.MemorySize}");
+                Console.WriteLine($"Architecture {(Environment.Is64BitOperatingSystem ? "64 Bit" : "32 Bit")} {(BitConverter.IsLittleEndian ? "Little Endian" : "Big Endian")}");
             }
             catch (Exception x)
             {
