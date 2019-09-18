@@ -235,7 +235,7 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
                 Pi.Timing.SleepMicroseconds(2); 
             }
 
-            int rawValue = ReadWord(ADS1X15_POINTER_CONVERSION);
+            int rawValue = ReadWord2C(ADS1X15_POINTER_CONVERSION);
             double value = rawValue * m_currentGain / short.MaxValue;
             return value;
         }
@@ -253,7 +253,7 @@ namespace Unosquare.RaspberryIO.Peripherals.AnalogDigitalConverter
         }
 
         /// <summary>
-        /// Reads a 16-bit Word. 
+        /// Reads a 16-bit Word from the I2C bus, accounting for the big-endian/little-endian conversion
         /// </summary>
         /// <param name="register">The register.</param>
         /// <returns>System.Int32.</returns>
