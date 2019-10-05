@@ -1,12 +1,13 @@
-﻿namespace Unosquare.RaspberryIO.Abstractions
+namespace Unosquare.RaspberryIO.Abstractions
 {
+    using System;
     using System.Collections.Generic;
 
     /// <summary>
     /// Interface for Raspberry Pi GPIO controller.
     /// </summary>
     /// <seealso cref="System.Collections.Generic.IReadOnlyCollection{IGpioPin}" />
-    public interface IGpioController : IReadOnlyCollection<IGpioPin>
+    public interface IGpioController : IReadOnlyCollection<IGpioPin>, IDisposable
     {
         /// <summary>
         /// Gets the <see cref="IGpioPin"/> with the specified BCM pin.
