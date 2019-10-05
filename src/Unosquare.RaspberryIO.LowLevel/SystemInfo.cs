@@ -28,15 +28,8 @@ namespace Unosquare.RaspberryIO.LowLevel
 
         internal static BoardRevision GetBoardRevision()
         {
-            lock (Lock)
-            {
-                if (_revGetted) return _boardRevision;
-                var val = WiringPi.PiBoardRev();
-                _boardRevision = val == 1 ? BoardRevision.Rev1 : BoardRevision.Rev2;
-                _revGetted = true;
-            }
-
-            return _boardRevision;
+            // I don't know how to detect this here, but Rev1 boards should be quite obsolete meanwhile
+            return BoardRevision.Rev2;
         }
     }
 }

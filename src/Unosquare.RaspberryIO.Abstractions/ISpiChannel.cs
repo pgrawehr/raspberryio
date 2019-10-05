@@ -1,9 +1,11 @@
-﻿namespace Unosquare.RaspberryIO.Abstractions
+using System;
+
+namespace Unosquare.RaspberryIO.Abstractions
 {
     /// <summary>
     /// Interfaces a SPI buses on the GPIO.
     /// </summary>
-    public interface ISpiChannel
+    public interface ISpiChannel : IDisposable
     {
         /// <summary>
         /// Gets the standard initialization file descriptor.

@@ -329,18 +329,7 @@ namespace Unosquare.RaspberryIO.LowLevel
             {
                 lock (_syncLock)
                 {
-                    if (IsInSoftToneMode == false)
-                    {
-                        var setupResult = WiringPi.SoftToneCreate(BcmPinNumber);
-                        if (setupResult != 0)
-                        {
-                            throw new InvalidOperationException(
-                                $"Unable to initialize soft tone on pin {BcmPinNumber}. Error Code: {setupResult}");
-                        }
-                    }
-
                     throw new NotImplementedException();
-                    _softToneFrequency = value;
                 }
             }
         }

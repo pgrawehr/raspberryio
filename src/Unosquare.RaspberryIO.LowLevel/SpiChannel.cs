@@ -6,6 +6,7 @@ namespace Unosquare.RaspberryIO.LowLevel
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using System.Device.Spi;
 
     /// <summary>
     /// Provides access to using the SPI buses on the GPIO.
@@ -27,6 +28,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         private static readonly object SyncRoot = new object();
         private static readonly Dictionary<SpiChannelNumber, SpiChannel> Buses = new Dictionary<SpiChannelNumber, SpiChannel>();
         private readonly object _syncLock = new object();
+        private readonly SpiDevice m_device;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SpiChannel"/> class.
@@ -39,7 +41,8 @@ namespace Unosquare.RaspberryIO.LowLevel
             {
                 Frequency = frequency.Clamp(MinFrequency, MaxFrequency);
                 Channel = (int)channel;
-                FileDescriptor = WiringPi.WiringPiSPISetup((int)channel, Frequency);
+                SpiConnectionSettings settings = new SpiConnectionSettings((int)channel, 0);
+                m_device = SpiDevice.Create(settings);
 
                 if (FileDescriptor < 0)
                 {
@@ -49,7 +52,13 @@ namespace Unosquare.RaspberryIO.LowLevel
         }
 
         /// <inheritdoc />
-        public int FileDescriptor { get; }
+        public int FileDescriptor
+        {
+            get
+            {
+                return m_device != null ? 1 : 0;
+            }
+        }
 
         /// <inheritdoc />
         public int Channel { get; }
@@ -67,11 +76,11 @@ namespace Unosquare.RaspberryIO.LowLevel
             {
                 var spiBuffer = new byte[buffer.Length];
                 Array.Copy(buffer, spiBuffer, buffer.Length);
+                // How do we know we expect exactly the same number of bytes back than we send?
+                byte[] readBuffer = new byte[buffer.Length];
+                m_device.TransferFullDuplex(buffer, readBuffer);
 
-                var result = WiringPi.WiringPiSPIDataRW(Channel, spiBuffer, spiBuffer.Length);
-                if (result < 0) HardwareException.Throw(nameof(SpiChannel), nameof(SendReceive));
-
-                return spiBuffer;
+                return readBuffer;
             }
         }
 
@@ -89,10 +98,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             lock (_syncLock)
             {
-                var result = SysCall.Write(FileDescriptor, buffer, buffer.Length);
-
-                if (result < 0)
-                    HardwareException.Throw(nameof(SpiChannel), nameof(Write));
+                m_device.Write(buffer);
             }
         }
 
@@ -124,6 +130,11 @@ namespace Unosquare.RaspberryIO.LowLevel
                 Buses[channel] = newBus;
                 return newBus;
             }
+        }
+
+        public void Dispose()
+        {
+            m_device.Dispose();
         }
     }
 }

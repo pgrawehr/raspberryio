@@ -1,9 +1,11 @@
-﻿namespace Unosquare.RaspberryIO.Abstractions
+using System;
+
+namespace Unosquare.RaspberryIO.Abstractions
 {
     /// <summary>
     /// Interfaces a device on the I2C Bus.
     /// </summary>
-    public interface II2CDevice
+    public interface II2CDevice : IDisposable
     {
         /// <summary>
         /// Gets the device identifier.

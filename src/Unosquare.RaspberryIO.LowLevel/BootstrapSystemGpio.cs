@@ -21,7 +21,6 @@ namespace Unosquare.RaspberryIO.LowLevel
                 DependencyContainer.Current.Register<II2CBus>(new I2CBus()).AsSingleton();
                 DependencyContainer.Current.Register<ISystemInfo>(new SystemInfo());
                 DependencyContainer.Current.Register<ITiming>(new Timing());
-                DependencyContainer.Current.Register<IThreading>(new Threading());
             }
         }
     }

@@ -1,4 +1,4 @@
-﻿namespace Unosquare.RaspberryIO.Abstractions
+namespace Unosquare.RaspberryIO.Abstractions
 {
     /// <summary>
     /// Interface for timing methods using interop.
@@ -9,13 +9,13 @@
         /// This returns a number representing the number of milliseconds since system boot.
         /// </summary>
         /// <returns>The milliseconds since system boot.</returns>
-        uint Milliseconds { get; }
+        long Milliseconds { get; }
 
         /// <summary>
         /// This returns a number representing the number of microseconds since system boot.
         /// </summary>
         /// <returns>The microseconds since system boot.</returns>
-        uint Microseconds { get; }
+        long Microseconds { get; }
 
         /// <summary>
         /// This causes program execution to pause for at least how long milliseconds.

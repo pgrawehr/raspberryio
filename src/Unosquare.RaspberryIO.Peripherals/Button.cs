@@ -8,11 +8,11 @@ namespace Unosquare.RaspberryIO.Peripherals
     /// </summary>
     public class Button
     {
-        internal const ulong InterruptTime = 500;
+        internal const long InterruptTime = 500;
 
         private readonly IGpioPin _gpioPin;
-        private ulong _pressedLastInterrupt;
-        private ulong _releasedLastInterrupt;
+        private long _pressedLastInterrupt;
+        private long _releasedLastInterrupt;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Button"/> class.
@@ -50,7 +50,7 @@ namespace Unosquare.RaspberryIO.Peripherals
 
         private void HandleButtonPressed()
         {
-            ulong interruptTime = Pi.Timing.Milliseconds;
+            long interruptTime = Pi.Timing.Milliseconds;
 
             if (interruptTime - _pressedLastInterrupt <= InterruptTime) return;
             _pressedLastInterrupt = interruptTime;
@@ -59,7 +59,7 @@ namespace Unosquare.RaspberryIO.Peripherals
 
         private void HandleButtonReleased()
         {
-            ulong interruptTime = Pi.Timing.Milliseconds;
+            long interruptTime = Pi.Timing.Milliseconds;
 
             if (interruptTime - _releasedLastInterrupt <= InterruptTime) return;
             _releasedLastInterrupt = interruptTime;

@@ -3,40 +3,46 @@ namespace Unosquare.RaspberryIO.LowLevel
     using RaspberryIO.Abstractions;
     using RaspberryIO.Abstractions.Native;
     using System;
+    using System.Buffers.Binary;
     using System.Threading.Tasks;
 
     /// <summary>
     /// Represents a device on the I2C Bus.
     /// </summary>
-    public class I2CDevice : II2CDevice
+    public sealed class I2CDevice : II2CDevice
     {
         private readonly object _syncLock = new object();
+        private System.Device.I2c.I2cDevice m_device;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="I2CDevice"/> class.
         /// </summary>
         /// <param name="deviceId">The device identifier.</param>
         /// <param name="fileDescriptor">The file descriptor.</param>
-        internal I2CDevice(int deviceId, int fileDescriptor)
+        internal I2CDevice(int deviceId, System.Device.I2c.I2cDevice fileDescriptor)
         {
             DeviceId = deviceId;
-            FileDescriptor = fileDescriptor;
+            m_device = fileDescriptor;
         }
 
         /// <inheritdoc />
         public int DeviceId { get; }
 
         /// <inheritdoc />
-        public int FileDescriptor { get; }
+        public int FileDescriptor
+        {
+            get
+            {
+                return m_device != null ? 1 : 0;
+            }
+        }
 
         /// <inheritdoc />
         public byte Read()
         {
             lock (_syncLock)
             {
-                var result = WiringPi.WiringPiI2CRead(FileDescriptor);
-                if (result < 0) HardwareException.Throw(nameof(I2CDevice), nameof(Read));
-                return (byte)result;
+                return m_device.ReadByte();
             }
         }
 
@@ -56,12 +62,7 @@ namespace Unosquare.RaspberryIO.LowLevel
             lock (_syncLock)
             {
                 var buffer = new byte[length];
-                for (var i = 0; i < length; i++)
-                {
-                    var result = WiringPi.WiringPiI2CRead(FileDescriptor);
-                    if (result < 0) HardwareException.Throw(nameof(I2CDevice), nameof(Read));
-                    buffer[i] = (byte)result;
-                }
+                m_device.Read(buffer);
 
                 return buffer;
             }
@@ -82,8 +83,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             lock (_syncLock)
             {
-                var result = WiringPi.WiringPiI2CWrite(FileDescriptor, data);
-                if (result < 0) HardwareException.Throw(nameof(I2CDevice), nameof(Write));
+                m_device.WriteByte(data);
             }
         }
 
@@ -102,11 +102,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             lock (_syncLock)
             {
-                foreach (var b in data)
-                {
-                    var result = WiringPi.WiringPiI2CWrite(FileDescriptor, b);
-                    if (result < 0) HardwareException.Throw(nameof(I2CDevice), nameof(Write));
-                }
+                m_device.Write(data);
             }
         }
 
@@ -118,7 +114,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         public Task WriteAsync(byte[] data) => Task.Run(() => { Write(data); });
 
         /// <summary>
-        /// These write an 8 or 16-bit data value into the device register indicated.
+        /// Write an 8 bit data value into the device register indicated.
         /// </summary>
         /// <param name="address">The register.</param>
         /// <param name="data">The data.</param>
@@ -126,13 +122,15 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             lock (_syncLock)
             {
-                var result = WiringPi.WiringPiI2CWriteReg8(FileDescriptor, address, data);
-                if (result < 0) HardwareException.Throw(nameof(I2CDevice), nameof(WriteAddressByte));
+                byte[] raw = new byte[2];
+                raw[0] = (byte)address;
+                raw[1] = data;
+                m_device.Write(raw);
             }
         }
 
         /// <summary>
-        /// These write an 8 or 16-bit data value into the device register indicated.
+        /// Write a 16-bit data value into the device register indicated.
         /// </summary>
         /// <param name="address">The register.</param>
         /// <param name="data">The data.</param>
@@ -140,8 +138,11 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             lock (_syncLock)
             {
-                var result = WiringPi.WiringPiI2CWriteReg16(FileDescriptor, address, data);
-                if (result < 0) HardwareException.Throw(nameof(I2CDevice), nameof(WriteAddressWord));
+                byte[] raw = new byte[3];
+                raw[0] = (byte)address;
+                raw[1] = (byte)(data >> 8);
+                raw[2] = (byte)(data & 0xFF);
+                m_device.Write(raw);
             }
         }
 
@@ -154,10 +155,10 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             lock (_syncLock)
             {
-                var result = WiringPi.WiringPiI2CReadReg8(FileDescriptor, address);
-                if (result < 0) HardwareException.Throw(nameof(I2CDevice), nameof(ReadAddressByte));
-
-                return (byte)result;
+                Span<byte> ret = stackalloc byte[1];
+                m_device.WriteRead(new byte[] { (byte)address }, ret);
+                
+                return ret[0];
             }
         }
 
@@ -170,11 +171,16 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             lock (_syncLock)
             {
-                var result = WiringPi.WiringPiI2CReadReg16(FileDescriptor, address);
-                if (result < 0) HardwareException.Throw(nameof(I2CDevice), nameof(ReadAddressWord));
+                Span<byte> ret = stackalloc byte[2];
+                m_device.WriteRead(new byte[] { (byte)address }, ret);
 
-                return Convert.ToUInt16(result);
+                return BinaryPrimitives.ReadUInt16BigEndian(ret);
             }
+        }
+
+        public void Dispose()
+        {
+            m_device.Dispose();
         }
     }
 }

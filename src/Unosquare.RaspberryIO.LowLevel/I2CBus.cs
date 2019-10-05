@@ -4,6 +4,7 @@ namespace Unosquare.RaspberryIO.LowLevel
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using System.Linq;
+    using System.Device.I2c;
 
     /// <inheritdoc />
     /// <summary>
@@ -44,9 +45,9 @@ namespace Unosquare.RaspberryIO.LowLevel
                 if (_devices.ContainsKey(deviceId))
                     return _devices[deviceId];
 
-                var fileDescriptor = SetupFileDescriptor(deviceId);
-                if (fileDescriptor < 0)
-                    throw new KeyNotFoundException($"Device with id {deviceId} could not be registered with the I2C bus. Error Code: {fileDescriptor}.");
+                var fileDescriptor = CreateAndOpenDevice(deviceId);
+                if (fileDescriptor == null)
+                    throw new KeyNotFoundException($"Device with id {deviceId} could not be registered with the I2C bus.");
 
                 var device = new I2CDevice(deviceId, fileDescriptor);
                 _devices[deviceId] = device;
@@ -54,18 +55,12 @@ namespace Unosquare.RaspberryIO.LowLevel
             }
         }
 
-        /// <summary>
-        /// This initializes the I2C system with your given device identifier.
-        /// The ID is the I2C number of the device and you can use the i2cdetect program to find this out.
-        /// wiringPiI2CSetup() will work out which revision Raspberry Pi you have and open the appropriate device in /dev.
-        /// The return value is the standard Linux filehandle, or -1 if any error – in which case, you can consult errno as usual.
-        /// </summary>
-        /// <param name="deviceId">The device identifier.</param>
-        /// <returns>The Linux file handle.</returns>
-        private static int SetupFileDescriptor(int deviceId)
+        private I2cDevice CreateAndOpenDevice(int deviceId)
         {
-            lock (SyncRoot)
-                return WiringPi.WiringPiI2CSetup(deviceId);
+            // Default bus address is 1 for all recent Pis (although the PI4 has more I2C interfaces, which I haven't seen in use so far)
+            I2cConnectionSettings connectionSettings = new I2cConnectionSettings(1, deviceId);
+            var device = I2cDevice.Create(connectionSettings);
+            return device;
         }
     }
 }
