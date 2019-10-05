@@ -12,7 +12,7 @@ namespace Unosquare.RaspberryIO.LowLevel
     /// Full pin reference available here:
     /// http://pinout.xyz/pinout/pin31_gpio6 and  http://wiringpi.com/pins/.
     /// </summary>
-    public sealed partial class GpioPin : IGpioPin
+    public sealed partial class GpioPin : IGpioPin, IDisposable
     {
         #region Property Backing
 
@@ -29,6 +29,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         };
 
         private readonly object _syncLock = new object();
+        private readonly GpioController m_controller;
         private GpioPinDriveMode _pinMode;
         private GpioPinResistorPullMode _resistorPullMode;
         private int _pwmRegister;
@@ -37,23 +38,26 @@ namespace Unosquare.RaspberryIO.LowLevel
         private int _pwmClockDivisor = 1;
         private int _softPwmValue = -1;
         private int _softToneFrequency = -1;
+        private bool m_pinOpen;
 
         #endregion
 
         #region Constructor
 
-                /// <summary>
+        /// <summary>
         /// Initializes a new instance of the <see cref="GpioPin"/> class.
         /// </summary>
         /// <param name="bcmPinNumber">The BCM pin number.</param>
-        private GpioPin(BcmPin bcmPinNumber)
+        internal GpioPin(BcmPin bcmPinNumber, GpioController controller)
         {
             BcmPin = bcmPinNumber;
+            m_controller = controller;
             BcmPinNumber = (int)bcmPinNumber;
 
             WiringPiPinNumber = BcmToWiringPiPinNumber(bcmPinNumber);
             PhysicalPinNumber = Definitions.BcmToPhysicalPinNumber(SystemInfo.GetBoardRevision(), bcmPinNumber);
             Header = (BcmPinNumber >= 28 && BcmPinNumber <= 31) ? GpioHeader.P5 : GpioHeader.P1;
+            m_pinOpen = false;
         }
 
         #endregion
@@ -102,12 +106,17 @@ namespace Unosquare.RaspberryIO.LowLevel
         /// <exception cref="T:System.NotSupportedException">Thrown when a pin does not support the given operation mode.</exception>
         public GpioPinDriveMode PinMode
         {
-            get => _pinMode;
+            get
+            {
+                EnsurePinOpen();
+                return _pinMode;
+            }
 
             set
             {
                 lock (_syncLock)
                 {
+                    EnsurePinOpen();
                     var mode = value;
                     if ((mode == GpioPinDriveMode.GpioClock && !HasCapability(PinCapability.GPCLK)) ||
                         (mode == GpioPinDriveMode.PwmOutput && !HasCapability(PinCapability.PWM)) ||
@@ -118,7 +127,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                             $"Pin {BcmPinNumber} '{Name}' does not support mode '{mode}'. Pin capabilities are limited to: {Capabilities}");
                     }
 
-                    
+                    m_controller.SetPinMode(BcmPinNumber, mode, InputPullMode);
                     _pinMode = mode;
                 }
             }
@@ -129,6 +138,11 @@ namespace Unosquare.RaspberryIO.LowLevel
         /// has been registered.
         /// </summary>
         public Action InterruptCallback { get; private set; }
+
+        /// <summary>
+        /// The interrupt callback that takes additional parameters. 
+        /// </summary>
+        public Action<int, int, uint> InterruptCallback2 { get; private set; }
 
         /// <summary>
         /// Gets the interrupt edge detection mode.
@@ -166,7 +180,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                             + $" Setting the {nameof(InputPullMode)} is only allowed if {nameof(PinMode)} is set to {GpioPinDriveMode.Input}");
                     }
 
-                    WiringPi.PullUpDnControl(BcmPinNumber, (int)value);
+                    m_controller.SetPinMode(BcmPinNumber, GpioPinDriveMode.Input, value);
                     _resistorPullMode = value;
                 }
             }
@@ -194,7 +208,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                             $"Pin {BcmPinNumber} '{Name}' does not support mode '{GpioPinDriveMode.PwmOutput}'. Pin capabilities are limited to: {Capabilities}");
                     }
 
-                    WiringPi.PwmWrite(BcmPinNumber, value);
+                    throw new NotImplementedException();
                     _pwmRegister = value;
                 }
             }
@@ -224,7 +238,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                             $"Pin {BcmPinNumber} '{Name}' does not support mode '{GpioPinDriveMode.PwmOutput}'. Pin capabilities are limited to: {Capabilities}");
                     }
 
-                    WiringPi.PwmSetMode((int)value);
+                    throw new NotImplementedException();
                     _pwmMode = value;
                 }
             }
@@ -253,7 +267,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                             $"Pin {BcmPinNumber} '{Name}' does not support mode '{GpioPinDriveMode.PwmOutput}'. Pin capabilities are limited to: {Capabilities}");
                     }
 
-                    WiringPi.PwmSetRange(value);
+                    throw new NotImplementedException();
                     _pwmRange = value;
                 }
             }
@@ -282,7 +296,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                             $"Pin {BcmPinNumber} '{Name}' does not support mode '{GpioPinDriveMode.PwmOutput}'. Pin capabilities are limited to: {Capabilities}");
                     }
 
-                    WiringPi.PwmSetClock(value);
+                    throw new NotImplementedException();
                     _pwmClockDivisor = value;
                 }
             }
@@ -325,7 +339,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                         }
                     }
 
-                    WiringPi.SoftToneWrite(BcmPinNumber, value);
+                    throw new NotImplementedException();
                     _softToneFrequency = value;
                 }
             }
@@ -360,7 +374,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                 {
                     if (IsInSoftPwmMode && value >= 0)
                     {
-                        WiringPi.SoftPwmWrite(BcmPinNumber, value);
+                        throw new NotImplementedException();
                         _softPwmValue = value;
                     }
                     else
@@ -394,18 +408,19 @@ namespace Unosquare.RaspberryIO.LowLevel
                 if (IsInSoftPwmMode)
                     throw new InvalidOperationException($"{nameof(StartSoftPwm)} has already been called.");
 
-                var startResult = WiringPi.SoftPwmCreate(BcmPinNumber, value, range);
+                throw new NotImplementedException();
+                ////var startResult = WiringPi.SoftPwmCreate(BcmPinNumber, value, range);
 
-                if (startResult == 0)
-                {
-                    _softPwmValue = value;
-                    SoftPwmRange = range;
-                }
-                else
-                {
-                    throw new InvalidOperationException(
-                        $"Could not start software based PWM on pin {BcmPinNumber}. Error code: {startResult}");
-                }
+                ////if (startResult == 0)
+                ////{
+                ////    _softPwmValue = value;
+                ////    SoftPwmRange = range;
+                ////}
+                ////else
+                ////{
+                ////    throw new InvalidOperationException(
+                ////        $"Could not start software based PWM on pin {BcmPinNumber}. Error code: {startResult}");
+                ////}
             }
         }
 
@@ -425,7 +440,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                         + $" Writes are only allowed if {nameof(PinMode)} is set to {GpioPinDriveMode.Output}");
                 }
 
-                WiringPi.DigitalWrite(BcmPinNumber, (int)value);
+                m_controller.SetPinValue(BcmPinNumber, value);
             }
         }
 
@@ -485,7 +500,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                         + $" Writes are only allowed if {nameof(PinMode)} is set to {GpioPinDriveMode.Output}");
                 }
 
-                WiringPi.AnalogWrite(BcmPinNumber, value);
+                throw new NotSupportedException("Operation not supported on a Raspberry Pi");
             }
         }
 
@@ -543,7 +558,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                         + $" Reads are only allowed if {nameof(PinMode)} is set to {GpioPinDriveMode.Input} or {GpioPinDriveMode.Output}");
                 }
 
-                return WiringPi.DigitalRead(BcmPinNumber) != 0;
+                return m_controller.GetPinValue(BcmPinNumber);
             }
         }
 
@@ -585,7 +600,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                         + $" Reads are only allowed if {nameof(PinMode)} is set to {GpioPinDriveMode.Input}");
                 }
 
-                return WiringPi.AnalogRead(BcmPinNumber);
+                throw new NotSupportedException("Operation not supported on a Raspberry Pi");
             }
         }
 
@@ -602,8 +617,9 @@ namespace Unosquare.RaspberryIO.LowLevel
 
         #region Interrupts
 
-        /// <inheritdoc />
-        /// <exception cref="ArgumentNullException">callback.</exception>
+        /// <summary>
+        /// Registers an interrupt callback when a pin changes.
+        /// </summary>
         public void RegisterInterruptCallback(EdgeDetection edgeDetection, Action callback)
         {
             if (callback == null)
@@ -615,32 +631,79 @@ namespace Unosquare.RaspberryIO.LowLevel
                     $"Unable to {nameof(RegisterInterruptCallback)} for pin {BcmPinNumber} because operating mode is {PinMode}."
                     + $" Calling {nameof(RegisterInterruptCallback)} is only allowed if {nameof(PinMode)} is set to {GpioPinDriveMode.Input}");
             }
-
+            if (InterruptCallback != null || InterruptCallback2 != null)
+            {
+                throw new NotSupportedException("Only one callback per pin is allowed");
+            }
             lock (_syncLock)
             {
-                var isrCallback = new Action(callback);
-                var registerResult = WiringPi.WiringPiISR(BcmPinNumber, GetWiringPiEdgeDetection(edgeDetection), isrCallback);
-                if (registerResult == 0)
-                {
-                    InterruptEdgeDetection = edgeDetection;
-                    InterruptCallback = isrCallback;
-                }
-                else
-                {
-                    HardwareException.Throw(nameof(GpioPin), nameof(RegisterInterruptCallback));
-                }
+                m_controller.RegisterCallback(BcmPinNumber, edgeDetection, CallbackHandler);
+                InterruptEdgeDetection = edgeDetection;
+                InterruptCallback = callback;
+            }
+        }
+
+        private void CallbackHandler(object sender, System.Device.Gpio.PinValueChangedEventArgs e)
+        {
+            InterruptCallback?.Invoke();
+        }
+
+        private void CallbackHandler2(object sender, System.Device.Gpio.PinValueChangedEventArgs e)
+        {
+            InterruptCallback2?.Invoke(e.PinNumber, Read() ? 1 : 0, 0);
+        }
+
+        /// <summary>
+        /// Deregisters all callbacks for this pin. 
+        /// </summary>
+        public void UnregisterInterruptCallback()
+        {
+            m_controller.UnregisterCallback(BcmPinNumber, CallbackHandler);
+            m_controller.UnregisterCallback(BcmPinNumber, CallbackHandler2);
+            InterruptCallback = null;
+            InterruptCallback2 = null;
+        }
+
+        public void Dispose()
+        {
+            m_controller.Close(BcmPinNumber);
+        }
+
+        private void EnsurePinOpen()
+        {
+            if (!m_pinOpen)
+            {
+                m_controller.Open(BcmPinNumber);
+                m_pinOpen = true;
             }
         }
 
         /// <inheritdoc />
-        public void RegisterInterruptCallback(EdgeDetection edgeDetection, Action<int, int, uint> callback) =>
-            throw new NotSupportedException("WiringPi does only support a simple interrupt callback that has no parameters.");
+        public void RegisterInterruptCallback(EdgeDetection edgeDetection, Action<int, int, uint> callback)
+        {
+            if (callback == null)
+                throw new ArgumentNullException(nameof(callback));
+
+            if (PinMode != GpioPinDriveMode.Input)
+            {
+                throw new InvalidOperationException(
+                    $"Unable to {nameof(RegisterInterruptCallback)} for pin {BcmPinNumber} because operating mode is {PinMode}."
+                    + $" Calling {nameof(RegisterInterruptCallback)} is only allowed if {nameof(PinMode)} is set to {GpioPinDriveMode.Input}");
+            }
+            if (InterruptCallback != null || InterruptCallback2 != null)
+            {
+                throw new NotSupportedException("Only one callback per pin is allowed");
+            }
+            lock (_syncLock)
+            {
+                m_controller.RegisterCallback(BcmPinNumber, edgeDetection, CallbackHandler2);
+                InterruptEdgeDetection = edgeDetection;
+                InterruptCallback2 = callback;
+            }
+        }
 
         internal static WiringPiPin BcmToWiringPiPinNumber(BcmPin pin) =>
             (WiringPiPin)GpioToWiringPi[(int)pin];
-
-        private static int GetWiringPiEdgeDetection(EdgeDetection edgeDetection) =>
-            GpioController.WiringPiEdgeDetectionMapping[edgeDetection];
 
         #endregion
     }

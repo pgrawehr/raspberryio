@@ -17,13 +17,10 @@ namespace Unosquare.RaspberryIO.LowLevel
     /// </summary>
     public sealed class GpioController : IGpioController, IDisposable
     {
-        #region Private Declarations
-
         private static readonly object SyncRoot = new object();
-        private readonly List<GpioPin> _pins;
+        private static readonly EnumMapper<GpioPinDriveMode, System.Device.Gpio.PinMode> PinModeMap;
+        private Dictionary<int, GpioPin> m_pins;
         private System.Device.Gpio.GpioController m_gpioController;
-
-        #endregion
 
         #region Constructors and Initialization
 
@@ -32,14 +29,9 @@ namespace Unosquare.RaspberryIO.LowLevel
         /// </summary>
         static GpioController()
         {
-            var wiringPiEdgeDetection = new Dictionary<EdgeDetection, int>
-            {
-                {EdgeDetection.FallingEdge, 21},
-                {EdgeDetection.RisingEdge, 1},
-                {EdgeDetection.FallingAndRisingEdge, 3},
-            };
-
-            WiringPiEdgeDetectionMapping = new ReadOnlyDictionary<EdgeDetection, int>(wiringPiEdgeDetection);
+            PinModeMap = new EnumMapper<GpioPinDriveMode, System.Device.Gpio.PinMode>();
+            PinModeMap.Add(GpioPinDriveMode.Input, System.Device.Gpio.PinMode.Input);
+            PinModeMap.Add(GpioPinDriveMode.Output, System.Device.Gpio.PinMode.Output);
         }
 
         /// <summary>
@@ -48,57 +40,26 @@ namespace Unosquare.RaspberryIO.LowLevel
         /// <exception cref="System.Exception">Unable to initialize the GPIO controller.</exception>
         internal GpioController()
         {
-            if (_pins != null)
-                return;
-
             m_gpioController = new System.Device.Gpio.GpioController(System.Device.Gpio.PinNumberingScheme.Logical);
-            _pins = new List<GpioPin>
-                    {
-                        GpioPin.Pin00.Value,
-                        GpioPin.Pin01.Value,
-                        GpioPin.Pin02.Value,
-                        GpioPin.Pin03.Value,
-                        GpioPin.Pin04.Value,
-                        GpioPin.Pin05.Value,
-                        GpioPin.Pin06.Value,
-                        GpioPin.Pin07.Value,
-                        GpioPin.Pin08.Value,
-                        GpioPin.Pin09.Value,
-                        GpioPin.Pin10.Value,
-                        GpioPin.Pin11.Value,
-                        GpioPin.Pin12.Value,
-                        GpioPin.Pin13.Value,
-                        GpioPin.Pin14.Value,
-                        GpioPin.Pin15.Value,
-                        GpioPin.Pin16.Value,
-                        GpioPin.Pin17.Value,
-                        GpioPin.Pin18.Value,
-                        GpioPin.Pin19.Value,
-                        GpioPin.Pin20.Value,
-                        GpioPin.Pin21.Value,
-                        GpioPin.Pin22.Value,
-                        GpioPin.Pin23.Value,
-                        GpioPin.Pin24.Value,
-                        GpioPin.Pin25.Value,
-                        GpioPin.Pin26.Value,
-                        GpioPin.Pin27.Value,
-                        GpioPin.Pin28.Value,
-                        GpioPin.Pin29.Value,
-                        GpioPin.Pin30.Value,
-                        GpioPin.Pin31.Value,
-                    };
+            m_pins = new Dictionary<int, GpioPin>();
+            Dictionary<int, GpioPin> headerP1 = new Dictionary<int, GpioPin>();
+            Dictionary<int, GpioPin> headerP5 = new Dictionary<int, GpioPin>();
 
-            var headerP1 = new Dictionary<int, GpioPin>(_pins.Count);
-            var headerP5 = new Dictionary<int, GpioPin>(_pins.Count);
-            foreach (var pin in _pins)
+            for (int i = 0; i <= 30; i++)
             {
-                if (pin.PhysicalPinNumber < 0)
-                    continue;
-
-                var header = pin.Header == GpioHeader.P1 ? headerP1 : headerP5;
-                header[pin.PhysicalPinNumber] = pin;
+                var pin = new GpioPin((BcmPin)i, this);
+                m_pins.Add(i, pin);
+                if (i <= 26)
+                {
+                    headerP1.Add(i, pin);
+                }
+                else
+                {
+                    headerP5.Add(i, pin);
+                }
             }
 
+            Pins = new ReadOnlyCollection<GpioPin>(m_pins.Select(x => x.Value).ToList());
             HeaderP1 = new ReadOnlyDictionary<int, GpioPin>(headerP1);
             HeaderP5 = new ReadOnlyDictionary<int, GpioPin>(headerP5);
         }
@@ -107,6 +68,10 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             if (m_gpioController != null)
             {
+                foreach(var p in m_pins)
+                {
+                    p.Value.Dispose();
+                }
                 m_gpioController.Dispose();
             }
             m_gpioController = null;
@@ -128,11 +93,6 @@ namespace Unosquare.RaspberryIO.LowLevel
                 }
             }
         }
-
-        /// <summary>
-        /// Gets the wiring pi edge detection mapping.
-        /// </summary>
-        internal static ReadOnlyDictionary<EdgeDetection, int> WiringPiEdgeDetectionMapping { get; }
 
         /// <inheritdoc />
         /// <summary>
@@ -157,7 +117,37 @@ namespace Unosquare.RaspberryIO.LowLevel
         /// <summary>
         /// Gets a red-only collection of all pins.
         /// </summary>
-        public ReadOnlyCollection<GpioPin> Pins => new ReadOnlyCollection<GpioPin>(_pins);
+        public ReadOnlyCollection<GpioPin> Pins
+        {
+            get;
+        }
+
+        internal void SetPinMode(int bcmPinNumber, GpioPinDriveMode mode, GpioPinResistorPullMode pullMode)
+        {
+            if (mode != GpioPinDriveMode.Output && mode != GpioPinDriveMode.Input)
+            {
+                throw new NotImplementedException();
+            }
+            if (mode == GpioPinDriveMode.Output)
+            {
+                m_gpioController.SetPinMode(bcmPinNumber, PinModeMap.Get(mode));
+            }
+            else
+            {
+                m_gpioController.SetPinMode(bcmPinNumber, pullMode == GpioPinResistorPullMode.PullUp ? System.Device.Gpio.PinMode.InputPullUp : System.Device.Gpio.PinMode.InputPullDown);
+            }
+        }
+
+        internal void SetPinValue(int bcmPinNumber, GpioPinValue value)
+        {
+            m_gpioController.Write(bcmPinNumber, value == GpioPinValue.High ? System.Device.Gpio.PinValue.High : System.Device.Gpio.PinValue.Low);
+        }
+
+        internal bool GetPinValue(int bcmPinNumber)
+        {
+            var v = m_gpioController.Read(bcmPinNumber);
+            return v == System.Device.Gpio.PinValue.High;
+        }
 
         /// <summary>
         /// Provides all the pins on Header P1 of the Pi as a lookup by physical header pin number.
@@ -170,170 +160,6 @@ namespace Unosquare.RaspberryIO.LowLevel
         /// This header is the secondary header and it is rarely used.
         /// </summary>
         public ReadOnlyDictionary<int, GpioPin> HeaderP5 { get; }
-
-        #endregion
-
-        #region Individual Pin Properties
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM0.
-        /// </summary>
-        public GpioPin Pin00 => GpioPin.Pin00.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM1.
-        /// </summary>
-        public GpioPin Pin01 => GpioPin.Pin01.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM2.
-        /// </summary>
-        public GpioPin Pin02 => GpioPin.Pin02.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM3.
-        /// </summary>
-        public GpioPin Pin03 => GpioPin.Pin03.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM4.
-        /// </summary>
-        public GpioPin Pin04 => GpioPin.Pin04.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM5.
-        /// </summary>
-        public GpioPin Pin05 => GpioPin.Pin05.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM6.
-        /// </summary>
-        public GpioPin Pin06 => GpioPin.Pin06.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM7.
-        /// </summary>
-        public GpioPin Pin07 => GpioPin.Pin07.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM8.
-        /// </summary>
-        public GpioPin Pin08 => GpioPin.Pin08.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM9.
-        /// </summary>
-        public GpioPin Pin09 => GpioPin.Pin09.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM10.
-        /// </summary>
-        public GpioPin Pin10 => GpioPin.Pin10.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM11.
-        /// </summary>
-        public GpioPin Pin11 => GpioPin.Pin11.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM12.
-        /// </summary>
-        public GpioPin Pin12 => GpioPin.Pin12.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM13.
-        /// </summary>
-        public GpioPin Pin13 => GpioPin.Pin13.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM14.
-        /// </summary>
-        public GpioPin Pin14 => GpioPin.Pin14.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM15.
-        /// </summary>
-        public GpioPin Pin15 => GpioPin.Pin15.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM16.
-        /// </summary>
-        public GpioPin Pin16 => GpioPin.Pin16.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM17.
-        /// </summary>
-        public GpioPin Pin17 => GpioPin.Pin17.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM18.
-        /// </summary>
-        public GpioPin Pin18 => GpioPin.Pin18.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM19.
-        /// </summary>
-        public GpioPin Pin19 => GpioPin.Pin19.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM20.
-        /// </summary>
-        public GpioPin Pin20 => GpioPin.Pin20.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM21.
-        /// </summary>
-        public GpioPin Pin21 => GpioPin.Pin21.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM22.
-        /// </summary>
-        public GpioPin Pin22 => GpioPin.Pin22.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM23.
-        /// </summary>
-        public GpioPin Pin23 => GpioPin.Pin23.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM24.
-        /// </summary>
-        public GpioPin Pin24 => GpioPin.Pin24.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM25.
-        /// </summary>
-        public GpioPin Pin25 => GpioPin.Pin25.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM26.
-        /// </summary>
-        public GpioPin Pin26 => GpioPin.Pin26.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM27.
-        /// </summary>
-        public GpioPin Pin27 => GpioPin.Pin27.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM28 (available on Header P5).
-        /// </summary>
-        public GpioPin Pin28 => GpioPin.Pin28.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM29 (available on Header P5).
-        /// </summary>
-        public GpioPin Pin29 => GpioPin.Pin29.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM30 (available on Header P5).
-        /// </summary>
-        public GpioPin Pin30 => GpioPin.Pin30.Value;
-
-        /// <summary>
-        /// Provides direct access to Pin known as BCM31 (available on Header P5).
-        /// </summary>
-        public GpioPin Pin31 => GpioPin.Pin31.Value;
 
         #endregion
 
@@ -398,6 +224,43 @@ namespace Unosquare.RaspberryIO.LowLevel
         IEnumerator IEnumerable.GetEnumerator() => Pins.GetEnumerator();
 
         #endregion
-                
+
+        #region Pin Operations
+
+        /// <summary>
+        /// Closes the pin.
+        /// Note that this is called from GpioPin.Dispose and therefore must be save from incorrect disposal order
+        /// </summary>
+        /// <param name="pin">Pin number</param>
+        public void Close(int pin)
+        {
+            if (m_gpioController != null)
+            {
+                m_gpioController.ClosePin(pin);
+            }
+        }
+
+        public void Open(int pin)
+        {
+            m_gpioController.OpenPin(pin);
+        }
+
+        public void RegisterCallback(int pin, EdgeDetection edge, System.Device.Gpio.PinChangeEventHandler eventHandler)
+        {
+            if (edge == EdgeDetection.FallingEdge || edge == EdgeDetection.FallingAndRisingEdge)
+            {
+                m_gpioController.RegisterCallbackForPinValueChangedEvent(pin, System.Device.Gpio.PinEventTypes.Falling, eventHandler);
+            }
+            if (edge == EdgeDetection.RisingEdge || edge == EdgeDetection.FallingAndRisingEdge)
+            {
+                m_gpioController.RegisterCallbackForPinValueChangedEvent(pin, System.Device.Gpio.PinEventTypes.Rising, eventHandler);
+            }
+        }
+
+        public void UnregisterCallback(int pin, System.Device.Gpio.PinChangeEventHandler eventHandler)
+        {
+            m_gpioController.UnregisterCallbackForPinValueChangedEvent(pin, eventHandler);         
+        }
+        #endregion
     }
 }

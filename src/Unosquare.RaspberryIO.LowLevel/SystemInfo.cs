@@ -21,10 +21,8 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             get
             {
-                var libParts = WiringPi.WiringPiLibrary.Split('.');
-                var major = int.Parse(libParts[libParts.Length - 2]);
-                var minor = int.Parse(libParts[libParts.Length - 1]);
-                return new Version(major, minor);
+                // TODO: Implement
+               return new Version(1, 0);
             }
         }
 
