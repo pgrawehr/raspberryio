@@ -4,7 +4,7 @@ namespace Unosquare.RaspberryIO.Playground
     using Swan.Logging;
     using System;
     using System.Collections.Generic;
-    using WiringPi;
+    using Unosquare.RaspberryIO.LowLevel;
 
     /// <summary>
     /// Main entry point class.
@@ -27,7 +27,7 @@ namespace Unosquare.RaspberryIO.Playground
             // We shouldn't be logging to the console in a console app that is user-interactive
             Logger.UnregisterLogger<ConsoleLogger>();
 
-            Pi.Init<BootstrapWiringPi>();
+            Pi.Init<BootstrapSystemGpio>();
 
             var exit = false;
             do
