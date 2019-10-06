@@ -134,7 +134,20 @@ namespace Unosquare.RaspberryIO.LowLevel
             }
             else
             {
-                m_gpioController.SetPinMode(bcmPinNumber, pullMode == GpioPinResistorPullMode.PullUp ? System.Device.Gpio.PinMode.InputPullUp : System.Device.Gpio.PinMode.InputPullDown);
+                System.Device.Gpio.PinMode setmode = System.Device.Gpio.PinMode.Input;
+                switch(pullMode)
+                {
+                    case GpioPinResistorPullMode.Off:
+                        setmode = System.Device.Gpio.PinMode.Input;
+                        break;
+                    case GpioPinResistorPullMode.PullDown:
+                        setmode = System.Device.Gpio.PinMode.InputPullDown;
+                        break;
+                    case GpioPinResistorPullMode.PullUp:
+                        setmode = System.Device.Gpio.PinMode.InputPullUp;
+                        break;
+                }
+                m_gpioController.SetPinMode(bcmPinNumber, setmode);
             }
         }
 
@@ -186,25 +199,6 @@ namespace Unosquare.RaspberryIO.LowLevel
         /// <inheritdoc />
         public IGpioPin this[P5 pinNumber] => HeaderP5[(int)pinNumber];
 
-        /// <summary>
-        /// Gets the <see cref="GpioPin"/> with the specified Wiring Pi pin number.
-        /// </summary>
-        /// <value>
-        /// The <see cref="GpioPin"/>.
-        /// </value>
-        /// <param name="pinNumber">The pin number.</param>
-        /// <returns>A reference to the GPIO pin.</returns>
-        public GpioPin this[WiringPiPin pinNumber]
-        {
-            get
-            {
-                if (pinNumber == WiringPiPin.Unknown)
-                    throw new InvalidOperationException("You can not get an unknown WiringPi pin.");
-
-                return Pins.First(p => p.WiringPiPinNumber == pinNumber);
-            }
-        }
-
         #endregion
 
         #region IReadOnlyCollection Implementation
@@ -245,6 +239,17 @@ namespace Unosquare.RaspberryIO.LowLevel
             m_gpioController.OpenPin(pin);
         }
 
+        public PinCapability GetCapabilities(int pin)
+        {
+            PinCapability pc = PinCapability.None;
+            if (m_gpioController.IsPinModeSupported(pin, System.Device.Gpio.PinMode.Input) && m_gpioController.IsPinModeSupported(pin, System.Device.Gpio.PinMode.Output))
+            {
+                // Other modes not supported trough this interface
+                pc = PinCapability.GP;
+            }
+            return pc;
+        }
+
         public void RegisterCallback(int pin, EdgeDetection edge, System.Device.Gpio.PinChangeEventHandler eventHandler)
         {
             if (edge == EdgeDetection.FallingEdge || edge == EdgeDetection.FallingAndRisingEdge)
@@ -259,7 +264,14 @@ namespace Unosquare.RaspberryIO.LowLevel
 
         public void UnregisterCallback(int pin, System.Device.Gpio.PinChangeEventHandler eventHandler)
         {
-            m_gpioController.UnregisterCallbackForPinValueChangedEvent(pin, eventHandler);         
+            try
+            {
+                m_gpioController.UnregisterCallbackForPinValueChangedEvent(pin, eventHandler);
+            }
+            catch (InvalidOperationException)
+            {
+                // Ignore. Removing Callbacks that weren't registered shouldn't be an issue. 
+            }
         }
         #endregion
     }

@@ -6,7 +6,7 @@ namespace Unosquare.RaspberryIO.Peripherals
     /// <summary>
     /// Implements a generic button attached to the GPIO.
     /// </summary>
-    public class Button
+    public class Button : IDisposable
     {
         internal const long InterruptTime = 500;
 
@@ -46,6 +46,22 @@ namespace Unosquare.RaspberryIO.Peripherals
                 HandleButtonPressed();
             else
                 HandleButtonReleased();
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _gpioPin.UnregisterInterruptCallback();
+                _gpioPin.Dispose();
+
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         private void HandleButtonPressed()

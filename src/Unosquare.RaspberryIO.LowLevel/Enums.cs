@@ -180,6 +180,11 @@ namespace Unosquare.RaspberryIO.LowLevel
     public enum PinCapability
     {
         /// <summary>
+        /// Empty capability set
+        /// </summary>
+        None = 0x0,
+
+        /// <summary>
         /// General Purpose capability: Digital and Analog Read/Write
         /// </summary>
         GP = 0x01,

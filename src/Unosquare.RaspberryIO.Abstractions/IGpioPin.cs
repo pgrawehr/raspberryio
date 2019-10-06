@@ -1,11 +1,11 @@
-﻿namespace Unosquare.RaspberryIO.Abstractions
+namespace Unosquare.RaspberryIO.Abstractions
 {
     using System;
 
     /// <summary>
     /// Interface for GPIO Pin on a RaspberryPi board.
     /// </summary>
-    public interface IGpioPin
+    public interface IGpioPin : IDisposable
     {
         /// <summary>
         /// Gets the <see cref="Abstractions.BcmPin"/>.
@@ -101,5 +101,10 @@
         /// The function is passed the GPIO, the current level, and the current tick
         /// (The number of microseconds since boot).</param>
         void RegisterInterruptCallback(EdgeDetection edgeDetection, Action<int, int, uint> callback);
+
+        /// <summary>
+        /// Clears the registered callback for this pin.
+        /// </summary>
+        void UnregisterInterruptCallback();
     }
 }

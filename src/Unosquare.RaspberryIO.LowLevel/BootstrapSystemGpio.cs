@@ -16,9 +16,9 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             lock (SyncLock)
             {
-                DependencyContainer.Current.Register<IGpioController>(new GpioController()).AsSingleton();
-                DependencyContainer.Current.Register<ISpiBus>(new SpiBus()).AsSingleton();
-                DependencyContainer.Current.Register<II2CBus>(new I2CBus()).AsSingleton();
+                DependencyContainer.Current.Register<IGpioController>(new GpioController());
+                DependencyContainer.Current.Register<ISpiBus>(new SpiBus());
+                DependencyContainer.Current.Register<II2CBus>(new I2CBus());
                 DependencyContainer.Current.Register<ISystemInfo>(new SystemInfo());
                 DependencyContainer.Current.Register<ITiming>(new Timing());
             }

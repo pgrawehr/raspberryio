@@ -10,7 +10,11 @@ namespace Unosquare.RaspberryIO.Playground.Extra
         {
             Console.Clear();
 
-            var inputPin = Pi.Gpio[BcmPin.Gpio24];
+            Console.WriteLine("I - Input, O - Output, U - Up, D - Down");
+            Console.WriteLine("Press ESC to quit");
+            var inputPin = Pi.Gpio[BcmPin.Gpio06];
+            inputPin.PinMode = GpioPinDriveMode.Input;
+            inputPin.InputPullMode = GpioPinResistorPullMode.PullUp;
             var button = new Button(inputPin, GpioPinResistorPullMode.PullUp);
 
             button.Pressed += (s, e) => LogMessageOnEvent("Pressed");
@@ -20,10 +24,27 @@ namespace Unosquare.RaspberryIO.Playground.Extra
             {
                 var input = Console.ReadKey(true).Key;
 
-                if (input != ConsoleKey.Escape) continue;
+                if (input == ConsoleKey.Escape)
+                    break;
 
-                break;
+                if (input == ConsoleKey.I)
+                {
+                    inputPin.PinMode = GpioPinDriveMode.Input;
+                }
+                if (input == ConsoleKey.O)
+                {
+                    inputPin.PinMode = GpioPinDriveMode.Output;
+                }
+                if (input == ConsoleKey.U)
+                {
+                    inputPin.InputPullMode = GpioPinResistorPullMode.PullUp;
+                }
+                if (input == ConsoleKey.D)
+                {
+                    inputPin.InputPullMode = GpioPinResistorPullMode.PullDown;
+                }
             }
+            button.Dispose();
         }
 
         private static void LogMessageOnEvent(string message)

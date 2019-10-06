@@ -54,10 +54,10 @@ namespace Unosquare.RaspberryIO.LowLevel
             m_controller = controller;
             BcmPinNumber = (int)bcmPinNumber;
 
-            WiringPiPinNumber = BcmToWiringPiPinNumber(bcmPinNumber);
             PhysicalPinNumber = Definitions.BcmToPhysicalPinNumber(SystemInfo.GetBoardRevision(), bcmPinNumber);
             Header = (BcmPinNumber >= 28 && BcmPinNumber <= 31) ? GpioHeader.P5 : GpioHeader.P1;
             m_pinOpen = false;
+            _resistorPullMode = GpioPinResistorPullMode.Off;
         }
 
         #endregion
@@ -72,12 +72,7 @@ namespace Unosquare.RaspberryIO.LowLevel
 
         /// <inheritdoc />
         public int PhysicalPinNumber { get; }
-
-        /// <summary>
-        /// Gets the WiringPi Pin number.
-        /// </summary>
-        public WiringPiPin WiringPiPinNumber { get; }
-
+        
         /// <inheritdoc />
         public GpioHeader Header { get; }
 
@@ -172,13 +167,14 @@ namespace Unosquare.RaspberryIO.LowLevel
             {
                 lock (_syncLock)
                 {
-                    if (PinMode != GpioPinDriveMode.Input)
-                    {
-                        _resistorPullMode = GpioPinResistorPullMode.Off;
-                        throw new InvalidOperationException(
-                            $"Unable to set the {nameof(InputPullMode)} for pin {BcmPinNumber} because operating mode is {PinMode}."
-                            + $" Setting the {nameof(InputPullMode)} is only allowed if {nameof(PinMode)} is set to {GpioPinDriveMode.Input}");
-                    }
+                    EnsurePinOpen();
+                    ////if (PinMode != GpioPinDriveMode.Input)
+                    ////{
+                    ////    _resistorPullMode = GpioPinResistorPullMode.Off;
+                    ////    throw new InvalidOperationException(
+                    ////        $"Unable to set the {nameof(InputPullMode)} for pin {BcmPinNumber} because operating mode is {PinMode}."
+                    ////        + $" Setting the {nameof(InputPullMode)} is only allowed if {nameof(PinMode)} is set to {GpioPinDriveMode.Input}");
+                    ////}
 
                     m_controller.SetPinMode(BcmPinNumber, GpioPinDriveMode.Input, value);
                     _resistorPullMode = value;
@@ -663,6 +659,7 @@ namespace Unosquare.RaspberryIO.LowLevel
             if (!m_pinOpen)
             {
                 m_controller.Open(BcmPinNumber);
+                Capabilities = PinCapability.GP;
                 m_pinOpen = true;
             }
         }

@@ -23,7 +23,7 @@ namespace Unosquare.RaspberryIO.Playground.Extra
                 break;
             }
 
-            task.Wait(cancellationTokenSource.Token);
+            task.Wait();
         }
 
         public static void TestLedDimming(bool hardware)
