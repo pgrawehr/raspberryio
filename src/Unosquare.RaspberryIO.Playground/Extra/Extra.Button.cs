@@ -12,9 +12,7 @@ namespace Unosquare.RaspberryIO.Playground.Extra
 
             Console.WriteLine("I - Input, O - Output, U - Up, D - Down");
             Console.WriteLine("Press ESC to quit");
-            var inputPin = Pi.Gpio[BcmPin.Gpio06];
-            inputPin.PinMode = GpioPinDriveMode.Input;
-            inputPin.InputPullMode = GpioPinResistorPullMode.PullUp;
+            var inputPin = Pi.Gpio[BcmPin.Gpio24];
             var button = new Button(inputPin, GpioPinResistorPullMode.PullUp);
 
             button.Pressed += (s, e) => LogMessageOnEvent("Pressed");

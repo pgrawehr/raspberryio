@@ -138,10 +138,10 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             lock (_syncLock)
             {
-                byte[] raw = new byte[3];
+                Span<byte> raw = stackalloc byte[3];
                 raw[0] = (byte)address;
-                raw[1] = (byte)(data >> 8);
-                raw[2] = (byte)(data & 0xFF);
+                raw[1] = (byte)(data & 0xFF);
+                raw[2] = (byte)(data >> 8);
                 m_device.Write(raw);
             }
         }
@@ -166,7 +166,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         /// These read an 8 or 16-bit value from the device register indicated.
         /// </summary>
         /// <param name="address">The register.</param>
-        /// <returns>The address word from device.</returns>
+        /// <returns>The address word from the device, in Big-Endian form. </returns>
         public ushort ReadAddressWord(int address)
         {
             lock (_syncLock)
@@ -174,7 +174,8 @@ namespace Unosquare.RaspberryIO.LowLevel
                 Span<byte> ret = stackalloc byte[2];
                 m_device.WriteRead(new byte[] { (byte)address }, ret);
 
-                return BinaryPrimitives.ReadUInt16BigEndian(ret);
+                int reti = ret[1] << 8 | ret[0];
+                return (ushort)reti;
             }
         }
 

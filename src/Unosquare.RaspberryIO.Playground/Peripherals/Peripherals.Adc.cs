@@ -35,9 +35,9 @@ namespace Unosquare.RaspberryIO.Playground.Peripherals
             var adc = new ADS1115(device);
             while (true)
             {
-                var a0 = adc.ReadChannel(0);
-                var a1 = adc.ReadChannel(1);
-                var a2 = adc.ReadChannel(2); // This 3rd channel can be connected to 3.3V or 0V to see that the reference values are converted correctly. 
+                float a0 = adc.ReadChannel(0);
+                float a1 = adc.ReadChannel(1);
+                float a2 = adc.ReadChannel(2); // This 3rd channel can be connected to 3.3V or 0V to see that the reference values are converted correctly. 
                 bool pressed = inputPin.Read();
                 Console.WriteLine($"Button {(pressed ? "pressed" : "not pressed")}\nX:{a0}\nY:{a1}\nReference:{a2}");
                 if (Console.KeyAvailable)
@@ -48,6 +48,7 @@ namespace Unosquare.RaspberryIO.Playground.Peripherals
                         break;
                     }
                 }
+                Thread.Sleep(100);
             }
         }
     }

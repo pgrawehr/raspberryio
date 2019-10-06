@@ -21,6 +21,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         private static readonly EnumMapper<GpioPinDriveMode, System.Device.Gpio.PinMode> PinModeMap;
         private Dictionary<int, GpioPin> m_pins;
         private System.Device.Gpio.GpioController m_gpioController;
+        private System.Device.Gpio.GpioDriver m_driver; 
 
         #region Constructors and Initialization
 
@@ -40,7 +41,8 @@ namespace Unosquare.RaspberryIO.LowLevel
         /// <exception cref="System.Exception">Unable to initialize the GPIO controller.</exception>
         internal GpioController()
         {
-            m_gpioController = new System.Device.Gpio.GpioController(System.Device.Gpio.PinNumberingScheme.Logical);
+            m_driver = new System.Device.Gpio.Drivers.RaspberryPi3Driver();
+            m_gpioController = new System.Device.Gpio.GpioController(System.Device.Gpio.PinNumberingScheme.Logical, m_driver);
             m_pins = new Dictionary<int, GpioPin>();
             Dictionary<int, GpioPin> headerP1 = new Dictionary<int, GpioPin>();
             Dictionary<int, GpioPin> headerP5 = new Dictionary<int, GpioPin>();
@@ -73,8 +75,10 @@ namespace Unosquare.RaspberryIO.LowLevel
                     p.Value.Dispose();
                 }
                 m_gpioController.Dispose();
+                m_driver.Dispose();
             }
             m_gpioController = null;
+            m_driver = null;
         }
 
         /// <summary>
