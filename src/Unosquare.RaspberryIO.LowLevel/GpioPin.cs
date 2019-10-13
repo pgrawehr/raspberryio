@@ -158,7 +158,10 @@ namespace Unosquare.RaspberryIO.LowLevel
 
         #region Hardware PWM Members
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Set the pull mode of the current pin (up, down or open).
+        /// This implicitly sets the pinmode to Input. 
+        /// </summary>
         public GpioPinResistorPullMode InputPullMode
         {
             get => PinMode == GpioPinDriveMode.Input ? _resistorPullMode : GpioPinResistorPullMode.Off;
@@ -168,15 +171,8 @@ namespace Unosquare.RaspberryIO.LowLevel
                 lock (_syncLock)
                 {
                     EnsurePinOpen();
-                    ////if (PinMode != GpioPinDriveMode.Input)
-                    ////{
-                    ////    _resistorPullMode = GpioPinResistorPullMode.Off;
-                    ////    throw new InvalidOperationException(
-                    ////        $"Unable to set the {nameof(InputPullMode)} for pin {BcmPinNumber} because operating mode is {PinMode}."
-                    ////        + $" Setting the {nameof(InputPullMode)} is only allowed if {nameof(PinMode)} is set to {GpioPinDriveMode.Input}");
-                    ////}
-
                     m_controller.SetPinMode(BcmPinNumber, GpioPinDriveMode.Input, value);
+                    PinMode = GpioPinDriveMode.Input;
                     _resistorPullMode = value;
                 }
             }
