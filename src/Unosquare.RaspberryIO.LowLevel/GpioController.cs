@@ -41,8 +41,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         /// <exception cref="System.Exception">Unable to initialize the GPIO controller.</exception>
         internal GpioController()
         {
-            m_driver = new System.Device.Gpio.Drivers.RaspberryPi3Driver();
-            m_gpioController = new System.Device.Gpio.GpioController(System.Device.Gpio.PinNumberingScheme.Logical, m_driver);
+            m_gpioController = new System.Device.Gpio.GpioController(System.Device.Gpio.PinNumberingScheme.Logical);
             m_pins = new Dictionary<int, GpioPin>();
             Dictionary<int, GpioPin> headerP1 = new Dictionary<int, GpioPin>();
             Dictionary<int, GpioPin> headerP5 = new Dictionary<int, GpioPin>();

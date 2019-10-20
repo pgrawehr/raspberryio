@@ -106,5 +106,7 @@ namespace Unosquare.RaspberryIO.Abstractions
         /// Clears the registered callback for this pin.
         /// </summary>
         void UnregisterInterruptCallback();
+
+        IPwmDevice CreatePwmDevice();
     }
 }

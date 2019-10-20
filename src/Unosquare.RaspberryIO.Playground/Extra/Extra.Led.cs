@@ -29,21 +29,31 @@ namespace Unosquare.RaspberryIO.Playground.Extra
         public static void TestLedDimming(bool hardware)
         {
             using var cancellationTokenSource = new CancellationTokenSource();
-            // var task = hardware ? DimHardware(cancellationTokenSource.Token) : DimSoftware(cancellationTokenSource.Token);
+            var task = hardware ? DimHardware(cancellationTokenSource.Token) : DimSoftware(cancellationTokenSource.Token);
 
-            // TODO: Not implemented
-            Console.WriteLine("TODO: Example currently not implemented");
             while (true)
             {
-                var input = Console.ReadKey(true).Key;
+                if (Console.KeyAvailable)
+                {
+                    var input = Console.ReadKey(true).Key;
 
-                if (input != ConsoleKey.Escape)
-                    continue;
-                cancellationTokenSource.Cancel();
-                break;
+                    if (input != ConsoleKey.Escape)
+                        continue;
+                    cancellationTokenSource.Cancel();
+                    break;
+                }
+                else
+                {
+                    // Task got an exception?
+                    if (task.IsCompleted)
+                    {
+                        break;
+                    }
+                    Thread.Sleep(100);
+                }
             }
 
-            // task.Wait(cancellationTokenSource.Token);
+            task.Wait(cancellationTokenSource.Token);
         }
 
         /// <summary>
@@ -76,78 +86,80 @@ namespace Unosquare.RaspberryIO.Playground.Extra
             }, cancellationToken);
         }
 
-        ////private static Task DimHardware(CancellationToken cancellationToken) =>
-        ////    Task.Run(async () =>
-        ////    {
-        ////        Console.Clear();
-        ////        Console.WriteLine("Hardware Dimming");
-        ////        Terminal.WriteLine(ExitMessage);
+        private static Task DimHardware(CancellationToken cancellationToken) =>
+            Task.Run(async () =>
+            {
+                Console.Clear();
+                Console.WriteLine("Hardware Dimming");
+                Terminal.WriteLine(ExitMessage);
 
-        ////        var pin = Pi.Gpio[BcmPin.Gpio13];
-        ////        pin.PinMode = GpioPinDriveMode.PwmOutput;
-        ////        pin.PwmMode = PwmMode.Balanced;
-        ////        pin.PwmClockDivisor = 2;
+                var pin = Pi.Gpio[BcmPin.Gpio13];
+                pin.PinMode = GpioPinDriveMode.Output;
+                var pinPwmDriver = pin.CreatePwmDevice();
+                pinPwmDriver.SetDutyCycle(0.5, 400);
+                pinPwmDriver.Enabled = true;
 
-        ////        while (!cancellationToken.IsCancellationRequested)
-        ////        {
-        ////            for (var x = 0; x <= 100; x++)
-        ////            {
-        ////                pin.PwmRegister = (int)pin.PwmRange / 100 * x;
-        ////                await Task.Delay(10, cancellationToken);
-        ////            }
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    for (var x = 0; x <= 100; x++)
+                    {
+                        pinPwmDriver.SetDutyCycle(x);
+                        await Task.Delay(10, cancellationToken);
+                    }
 
-        ////            for (var x = 0; x <= 100; x++)
-        ////            {
-        ////                pin.PwmRegister = (int)pin.PwmRange - ((int)pin.PwmRange / 100 * x);
-        ////                await Task.Delay(10, cancellationToken);
-        ////            }
-        ////        }
+                    for (var x = 0; x <= 100; x++)
+                    {
+                        pinPwmDriver.SetDutyCycle(x);
+                        await Task.Delay(10, cancellationToken);
+                    }
+                }
 
-        ////        pin.PinMode = GpioPinDriveMode.Output;
-        ////        pin.Write(0);
-        ////    }, cancellationToken);
+                pinPwmDriver.Dispose();
+                pin.PinMode = GpioPinDriveMode.Output;
+                pin.Write(0);
+            }, cancellationToken);
 
-        /////// <summary>
-        /////// For this test, connect a two-color LED to Gpio23, Gpio24 and ground. Tested with the KY-011 Module. (don't forget the resistor!).
-        /////// </summary>
-        ////private static Task DimSoftware(CancellationToken cancellationToken) =>
-        ////    Task.Run(async () =>
-        ////    {
-        ////        Console.Clear();
-        ////        Console.WriteLine("Software Dimming");
-        ////        Terminal.WriteLine(ExitMessage);
+        /// <summary>
+        /// For this test, connect a two-color LED to Gpio23, Gpio24 and ground. Tested with the KY-011 Module. (don't forget the resistor!).
+        /// </summary>
+        private static Task DimSoftware(CancellationToken cancellationToken) =>
+            Task.Run(async () =>
+            {
+                Console.Clear();
+                Console.WriteLine("Software Dimming");
+                Terminal.WriteLine(ExitMessage);
 
-        ////        var pinGreen = Pi.Gpio[BcmPin.Gpio23];
-        ////        var pinRed = Pi.Gpio[BcmPin.Gpio24];
+                var pinGreen = Pi.Gpio[BcmPin.Gpio23];
+                var pinRed = Pi.Gpio[BcmPin.Gpio24];
 
-        ////        pinGreen.PinMode = GpioPinDriveMode.Output;
-        ////        pinGreen.StartSoftPwm(0, 100);
-        ////        pinRed.PinMode = GpioPinDriveMode.Output;
-        ////        pinRed.StartSoftPwm(0, 100);
+                ////pinGreen.PinMode = GpioPinDriveMode.Output;
+                ////pinGreen.StartSoftPwm(0, 100);
+                ////pinRed.PinMode = GpioPinDriveMode.Output;
+                ////pinRed.StartSoftPwm(0, 100);
 
-        ////        var redOn = false;
+                ////var redOn = false;
 
-        ////        while (!cancellationToken.IsCancellationRequested)
-        ////        {
-        ////            var pin = redOn ? pinRed : pinGreen;
-        ////            redOn = !redOn;
+                ////while (!cancellationToken.IsCancellationRequested)
+                ////{
+                ////    var pin = redOn ? pinRed : pinGreen;
+                ////    redOn = !redOn;
 
-        ////            for (var x = 0; x <= 100; x++)
-        ////            {
-        ////                pin.SoftPwmValue = pinGreen.SoftPwmRange / 100 * x;
-        ////                await Task.Delay(10, cancellationToken);
-        ////            }
+                ////    for (var x = 0; x <= 100; x++)
+                ////    {
+                ////        pin.SoftPwmValue = pinGreen.SoftPwmRange / 100 * x;
+                ////        await Task.Delay(10, cancellationToken);
+                ////    }
 
-        ////            for (var x = 0; x <= 100; x++)
-        ////            {
-        ////                pin.SoftPwmValue = pinGreen.SoftPwmRange - (pinGreen.SoftPwmRange / 100 * x);
-        ////                await Task.Delay(10, cancellationToken);
-        ////            }
-        ////        }
+                ////    for (var x = 0; x <= 100; x++)
+                ////    {
+                ////        pin.SoftPwmValue = pinGreen.SoftPwmRange - (pinGreen.SoftPwmRange / 100 * x);
+                ////        await Task.Delay(10, cancellationToken);
+                ////    }
+                ////}
 
-        ////        pinGreen.Write(0);
-        ////        pinRed.Write(0);
-        ////        Terminal.WriteLine("End of task");
-        ////    }, cancellationToken);
+                pinGreen.Write(0);
+                pinRed.Write(0);
+                Terminal.WriteLine("End of task");
+            }, cancellationToken);
     }
 }
