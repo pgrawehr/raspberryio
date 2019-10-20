@@ -93,6 +93,14 @@ namespace Unosquare.RaspberryIO.LowLevel
             set => Write(value);
         }
 
+        protected GpioController Controller
+        {
+            get
+            {
+                return m_controller;
+            }
+        }
+
         #endregion
 
         #region Hardware-Specific Properties
@@ -421,6 +429,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         public void Dispose()
         {
             m_controller.Close(BcmPinNumber);
+            m_pinOpen = false;
         }
 
         private void EnsurePinOpen()
@@ -457,10 +466,18 @@ namespace Unosquare.RaspberryIO.LowLevel
             }
         }
 
-        public IPwmDevice CreatePwmDevice()
+        public IPwmDevice CreatePwmDevice(bool software)
         {
+            if (software)
+            {
+                // We have to close the pin (from the driver's perspective) to activate a software PWM on it
+                m_controller.Close(BcmPinNumber);
+                m_pinOpen = false;
+                var sw = new System.Device.Pwm.Drivers.SoftwarePwmChannel((int)BcmPinNumber, 400, 0.5, false, Controller.SystemController);
+                return new SoftwarePwmChannel(sw, this);
+            }
             var pwm = System.Device.Pwm.PwmChannel.Create(0, 0);
-            return new HardwarePwmChannel(pwm);
+            return new HardwarePwmChannel(pwm, this);
         }
 
         internal static WiringPiPin BcmToWiringPiPinNumber(BcmPin pin) =>

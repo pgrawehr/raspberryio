@@ -107,6 +107,12 @@ namespace Unosquare.RaspberryIO.Abstractions
         /// </summary>
         void UnregisterInterruptCallback();
 
-        IPwmDevice CreatePwmDevice();
+        /// <summary>
+        /// Create a PWM device for this channel
+        /// </summary>
+        /// <param name="software">True to use software PWM</param>
+        /// <returns>An interface to a PWM device</returns>
+        /// <exception cref="NotSupportedException">When attempting to create a hardware PWM device on a pin that doesn't support it.</exception>
+        IPwmDevice CreatePwmDevice(bool software);
     }
 }

@@ -94,8 +94,8 @@ namespace Unosquare.RaspberryIO.Playground.Extra
                 Terminal.WriteLine(ExitMessage);
 
                 var pin = Pi.Gpio[BcmPin.Gpio13];
-                pin.PinMode = GpioPinDriveMode.Output;
-                var pinPwmDriver = pin.CreatePwmDevice();
+                // pin.PinMode = GpioPinDriveMode.Output;
+                var pinPwmDriver = pin.CreatePwmDevice(false);
                 pinPwmDriver.SetDutyCycle(0.5, 400);
                 pinPwmDriver.Enabled = true;
 
@@ -120,7 +120,8 @@ namespace Unosquare.RaspberryIO.Playground.Extra
             }, cancellationToken);
 
         /// <summary>
-        /// For this test, connect a two-color LED to Gpio23, Gpio24 and ground. Tested with the KY-011 Module. (don't forget the resistor!).
+        /// For this test, connect a three-color LED to Gpio23, Gpio24, Gpio25 and ground. Tested with the KY-016 Module, works also with the KY-011 Module (which has only 2 colors).
+        /// Don't forget the resistor(s)!
         /// </summary>
         private static Task DimSoftware(CancellationToken cancellationToken) =>
             Task.Run(async () =>
@@ -131,34 +132,62 @@ namespace Unosquare.RaspberryIO.Playground.Extra
 
                 var pinGreen = Pi.Gpio[BcmPin.Gpio23];
                 var pinRed = Pi.Gpio[BcmPin.Gpio24];
+                var pinBlue = Pi.Gpio[BcmPin.Gpio25];
 
-                ////pinGreen.PinMode = GpioPinDriveMode.Output;
-                ////pinGreen.StartSoftPwm(0, 100);
-                ////pinRed.PinMode = GpioPinDriveMode.Output;
-                ////pinRed.StartSoftPwm(0, 100);
+                pinGreen.PinMode = GpioPinDriveMode.Output;
+                var greenPwm = pinGreen.CreatePwmDevice(true);
+                greenPwm.SetDutyCycle(0.5, 400);
+                greenPwm.Enabled = true;
 
-                ////var redOn = false;
+                pinRed.PinMode = GpioPinDriveMode.Output;
+                var redPwm = pinRed.CreatePwmDevice(true);
+                redPwm.SetDutyCycle(0.5, 400);
+                redPwm.Enabled = true;
 
-                ////while (!cancellationToken.IsCancellationRequested)
-                ////{
-                ////    var pin = redOn ? pinRed : pinGreen;
-                ////    redOn = !redOn;
+                pinBlue.PinMode = GpioPinDriveMode.Output;
+                var bluePwm = pinBlue.CreatePwmDevice(true);
+                bluePwm.SetDutyCycle(0.5, 400);
+                bluePwm.Enabled = true;
 
-                ////    for (var x = 0; x <= 100; x++)
-                ////    {
-                ////        pin.SoftPwmValue = pinGreen.SoftPwmRange / 100 * x;
-                ////        await Task.Delay(10, cancellationToken);
-                ////    }
+                int channel = 0;
 
-                ////    for (var x = 0; x <= 100; x++)
-                ////    {
-                ////        pin.SoftPwmValue = pinGreen.SoftPwmRange - (pinGreen.SoftPwmRange / 100 * x);
-                ////        await Task.Delay(10, cancellationToken);
-                ////    }
-                ////}
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    IPwmDevice pwm = null;
+                    if (channel == 0)
+                    {
+                        pwm = greenPwm;
+                    }
+                    else if (channel == 1)
+                    {
+                        pwm = redPwm;
+                    }
+                    else
+                    {
+                        pwm = bluePwm;
+                    }
+                    channel = (channel + 1) % 3;
+
+                    for (var x = 0; x <= 100; x++)
+                    {
+                        pwm.SetDutyCycle(x);
+                        await Task.Delay(50, cancellationToken);
+                    }
+
+                    for (var x = 100; x >= 0; x--)
+                    {
+                        pwm.SetDutyCycle(x);
+                        await Task.Delay(50, cancellationToken);
+                    }
+                }
+
+                bluePwm.Dispose();
+                greenPwm.Dispose();
+                redPwm.Dispose();
 
                 pinGreen.Write(0);
                 pinRed.Write(0);
+                pinBlue.Write(0);
                 Terminal.WriteLine("End of task");
             }, cancellationToken);
     }

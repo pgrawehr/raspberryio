@@ -125,6 +125,14 @@ namespace Unosquare.RaspberryIO.LowLevel
             get;
         }
 
+        internal System.Device.Gpio.GpioController SystemController
+        {
+            get
+            {
+                return m_gpioController;
+            }
+        }
+
         internal void SetPinMode(int bcmPinNumber, GpioPinDriveMode mode, GpioPinResistorPullMode pullMode)
         {
             if (mode != GpioPinDriveMode.Output && mode != GpioPinDriveMode.Input)

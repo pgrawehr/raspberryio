@@ -5,18 +5,20 @@ using Unosquare.RaspberryIO.Abstractions;
 
 namespace Unosquare.RaspberryIO.LowLevel
 {
-    public class HardwarePwmChannel : IPwmDevice
+    class HardwarePwmChannel : IPwmDevice
     {
         private System.Device.Pwm.PwmChannel m_channel;
+        private IGpioPin m_pin;
         private bool m_enabled;
 
-        internal HardwarePwmChannel(System.Device.Pwm.PwmChannel channel)
+        internal HardwarePwmChannel(System.Device.Pwm.PwmChannel channel, IGpioPin pin)
         {
             m_channel = channel;
+            m_pin = pin;
             m_enabled = false;
         }
 
-        public int Pin => throw new NotImplementedException();
+        public int Pin => m_pin.BcmPinNumber;
 
         public bool IsHardware => true;
 
