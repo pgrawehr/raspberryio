@@ -53,7 +53,6 @@ namespace Unosquare.RaspberryIO.Peripherals
             if (disposing)
             {
                 _gpioPin.UnregisterInterruptCallback();
-                _gpioPin.Dispose();
 
             }
         }

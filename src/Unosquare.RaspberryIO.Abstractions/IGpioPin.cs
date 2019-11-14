@@ -5,7 +5,7 @@ namespace Unosquare.RaspberryIO.Abstractions
     /// <summary>
     /// Interface for GPIO Pin on a RaspberryPi board.
     /// </summary>
-    public interface IGpioPin : IDisposable
+    public interface IGpioPin
     {
         /// <summary>
         /// Gets the <see cref="Abstractions.BcmPin"/>.

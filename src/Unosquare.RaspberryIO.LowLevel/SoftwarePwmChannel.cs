@@ -8,7 +8,7 @@ namespace Unosquare.RaspberryIO.LowLevel
 {
     class SoftwarePwmChannel : IPwmDevice
     {
-        private readonly IGpioPin m_pin;
+        private readonly GpioPin m_pin;
         private System.Device.Pwm.Drivers.SoftwarePwmChannel m_device;
         private bool m_enabled;
 
@@ -51,9 +51,15 @@ namespace Unosquare.RaspberryIO.LowLevel
             {
                 if (m_device != null)
                 {
+                    m_device.DutyCycle = 0.0;
                     m_device.Stop();
-                    m_enabled = false;
                     m_device.Dispose();
+
+                    m_enabled = false;
+                    m_device = null;
+
+                    // Set pin mode back to output
+                    m_pin.Reopen();
                 }
             }
         }
@@ -74,7 +80,7 @@ namespace Unosquare.RaspberryIO.LowLevel
                 throw new ArgumentOutOfRangeException(nameof(percent), "Percent must be between 0 and 100");
             }
             m_device.DutyCycle = percent / 100;
-            m_device.Frequency = 1;
+            // m_device.Frequency = 2;
         }
     }
 }

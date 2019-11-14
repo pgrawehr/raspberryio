@@ -46,14 +46,30 @@ namespace Unosquare.RaspberryIO.LowLevel
             }
         }
 
-        public void SetDutyCycle(double percent, int frequency = 400)
+        public void SetDutyCycle(double percent, int frequency)
         {
             if (m_channel == null)
             {
                 throw new ObjectDisposedException(nameof(HardwarePwmChannel));
             }
+
+            if (frequency != m_channel.Frequency)
+            {
+                // Otherwise, this may throw an exception (workaround until fixed in driver)
+                m_channel.DutyCycle = 0;
+                m_channel.Frequency = frequency;
+            }
             m_channel.DutyCycle = percent;
-            m_channel.Frequency = frequency;
+        }
+
+        public void SetDutyCycle(double percent)
+        {
+            if (m_channel == null)
+            {
+                throw new ObjectDisposedException(nameof(HardwarePwmChannel));
+            }
+
+            m_channel.DutyCycle = percent;
         }
 
         protected virtual void Dispose(bool disposing)

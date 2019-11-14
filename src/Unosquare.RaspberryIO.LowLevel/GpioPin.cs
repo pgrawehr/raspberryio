@@ -195,6 +195,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             lock (_syncLock)
             {
+                EnsurePinOpen();
                 if (PinMode != GpioPinDriveMode.Output)
                 {
                     throw new InvalidOperationException(
@@ -426,8 +427,12 @@ namespace Unosquare.RaspberryIO.LowLevel
             InterruptCallback2 = null;
         }
 
+        /// <summary>
+        /// Dispose should only be used internally, not by clients (the pins are owned by the GpioController)
+        /// </summary>
         public void Dispose()
         {
+            Console.WriteLine($"Disposing Pin {BcmPinNumber}");
             m_controller.Close(BcmPinNumber);
             m_pinOpen = false;
         }
@@ -436,6 +441,7 @@ namespace Unosquare.RaspberryIO.LowLevel
         {
             if (!m_pinOpen)
             {
+                Console.WriteLine($"Opening Pin {BcmPinNumber}");
                 m_controller.Open(BcmPinNumber);
                 Capabilities = PinCapability.GP;
                 m_pinOpen = true;
@@ -471,13 +477,35 @@ namespace Unosquare.RaspberryIO.LowLevel
             if (software)
             {
                 // We have to close the pin (from the driver's perspective) to activate a software PWM on it
+                Console.WriteLine($"Closing Pin {BcmPinNumber} for transfer to Pwm Channel");
+
                 m_controller.Close(BcmPinNumber);
                 m_pinOpen = false;
-                var sw = new System.Device.Pwm.Drivers.SoftwarePwmChannel((int)BcmPinNumber, 400, 0.5, false, Controller.SystemController);
+                var sw = new System.Device.Pwm.Drivers.SoftwarePwmChannel((int)BcmPinNumber, 50, 0.0, true, Controller.SystemController);
                 return new SoftwarePwmChannel(sw, this);
             }
-            var pwm = System.Device.Pwm.PwmChannel.Create(0, 0);
-            return new HardwarePwmChannel(pwm, this);
+            if (BcmPinNumber == 12)
+            {
+                var pwm = System.Device.Pwm.PwmChannel.Create(0, 0);
+                return new HardwarePwmChannel(pwm, this);
+            }
+            if (BcmPinNumber == 13)
+            {
+                var pwm = System.Device.Pwm.PwmChannel.Create(0, 1);
+                return new HardwarePwmChannel(pwm, this);
+            }
+            throw new NotSupportedException("Hardware PWM is only supported on BCM Pins 12 and 13");
+        }
+
+        /// <summary>
+        /// Used to return the pin to normal state afeter a software PWM device was disposed
+        /// </summary>
+        internal void Reopen()
+        {
+            Console.WriteLine($"Reopening Pin {BcmPinNumber}");
+            m_controller.Open(BcmPinNumber);
+            m_pinOpen = true;
+            PinMode = GpioPinDriveMode.Output;
         }
 
         internal static WiringPiPin BcmToWiringPiPinNumber(BcmPin pin) =>

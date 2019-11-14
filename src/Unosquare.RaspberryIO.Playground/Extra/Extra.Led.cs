@@ -33,6 +33,7 @@ namespace Unosquare.RaspberryIO.Playground.Extra
 
             while (true)
             {
+                // Need to poll the keyboard and the task state, because otherwise a task exception only shows up after the user presses ESC. 
                 if (Console.KeyAvailable)
                 {
                     var input = Console.ReadKey(true).Key;
@@ -53,7 +54,8 @@ namespace Unosquare.RaspberryIO.Playground.Extra
                 }
             }
 
-            task.Wait(cancellationTokenSource.Token);
+            task.Wait();
+            task.Dispose();
         }
 
         /// <summary>
@@ -83,40 +85,39 @@ namespace Unosquare.RaspberryIO.Playground.Extra
                 }
 
                 blinkingPin.Write(0);
-            }, cancellationToken);
+            });
         }
 
         private static Task DimHardware(CancellationToken cancellationToken) =>
-            Task.Run(async () =>
+            Task.Run(() =>
             {
                 Console.Clear();
                 Console.WriteLine("Hardware Dimming");
-                Terminal.WriteLine(ExitMessage);
+                Console.WriteLine(ExitMessage);
 
-                var pin = Pi.Gpio[BcmPin.Gpio13];
+                var pin = Pi.Gpio[BcmPin.Gpio12];
                 // pin.PinMode = GpioPinDriveMode.Output;
                 var pinPwmDriver = pin.CreatePwmDevice(false);
-                pinPwmDriver.SetDutyCycle(0.5, 400);
+                int frequency = 4000;
+                pinPwmDriver.SetDutyCycle(0.5, frequency);
                 pinPwmDriver.Enabled = true;
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     for (var x = 0; x <= 100; x++)
                     {
-                        pinPwmDriver.SetDutyCycle(x);
-                        await Task.Delay(10, cancellationToken);
+                        pinPwmDriver.SetDutyCycle(x / 100.0, frequency);
+                        cancellationToken.WaitHandle.WaitOne(50);
                     }
 
                     for (var x = 0; x <= 100; x++)
                     {
-                        pinPwmDriver.SetDutyCycle(x);
-                        await Task.Delay(10, cancellationToken);
+                        pinPwmDriver.SetDutyCycle((100.0 - x) / 100.0, frequency);
+                        cancellationToken.WaitHandle.WaitOne(50);
                     }
                 }
 
                 pinPwmDriver.Dispose();
-                pin.PinMode = GpioPinDriveMode.Output;
-                pin.Write(0);
             }, cancellationToken);
 
         /// <summary>
@@ -124,11 +125,11 @@ namespace Unosquare.RaspberryIO.Playground.Extra
         /// Don't forget the resistor(s)!
         /// </summary>
         private static Task DimSoftware(CancellationToken cancellationToken) =>
-            Task.Run(async () =>
+            Task.Run(() =>
             {
                 Console.Clear();
                 Console.WriteLine("Software Dimming");
-                Terminal.WriteLine(ExitMessage);
+                Console.WriteLine(ExitMessage);
 
                 var pinGreen = Pi.Gpio[BcmPin.Gpio23];
                 var pinRed = Pi.Gpio[BcmPin.Gpio24];
@@ -136,59 +137,73 @@ namespace Unosquare.RaspberryIO.Playground.Extra
 
                 pinGreen.PinMode = GpioPinDriveMode.Output;
                 var greenPwm = pinGreen.CreatePwmDevice(true);
-                greenPwm.SetDutyCycle(0.5, 400);
+                greenPwm.SetDutyCycle(0.0, 400);
                 greenPwm.Enabled = true;
 
                 pinRed.PinMode = GpioPinDriveMode.Output;
                 var redPwm = pinRed.CreatePwmDevice(true);
-                redPwm.SetDutyCycle(0.5, 400);
+                redPwm.SetDutyCycle(0.0, 400);
                 redPwm.Enabled = true;
 
                 pinBlue.PinMode = GpioPinDriveMode.Output;
                 var bluePwm = pinBlue.CreatePwmDevice(true);
-                bluePwm.SetDutyCycle(0.5, 400);
+                bluePwm.SetDutyCycle(0.0, 400);
                 bluePwm.Enabled = true;
 
                 int channel = 0;
 
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    IPwmDevice pwm = null;
-                    if (channel == 0)
+                    while (!cancellationToken.IsCancellationRequested)
                     {
-                        pwm = greenPwm;
-                    }
-                    else if (channel == 1)
-                    {
-                        pwm = redPwm;
-                    }
-                    else
-                    {
-                        pwm = bluePwm;
-                    }
-                    channel = (channel + 1) % 3;
+                        IPwmDevice pwm = null;
+                        if (channel == 0)
+                        {
+                            pwm = greenPwm;
+                        }
+                        else if (channel == 1)
+                        {
+                            pwm = redPwm;
+                        }
+                        else
+                        {
+                            pwm = bluePwm;
+                        }
 
-                    for (var x = 0; x <= 100; x++)
-                    {
-                        pwm.SetDutyCycle(x);
-                        await Task.Delay(50, cancellationToken);
-                    }
+                        channel = (channel + 1) % 3;
 
-                    for (var x = 100; x >= 0; x--)
-                    {
-                        pwm.SetDutyCycle(x);
-                        await Task.Delay(50, cancellationToken);
+                        for (var x = 0; x <= 100; x++)
+                        {
+                            pwm.SetDutyCycle(x);
+                            cancellationToken.WaitHandle.WaitOne(50);
+                        }
+
+                        for (var x = 100; x >= 0; x--)
+                        {
+                            pwm.SetDutyCycle(x);
+                            cancellationToken.WaitHandle.WaitOne(50);
+                        }
                     }
                 }
+                finally
+                {
+                    greenPwm.Dispose();
+                    for (int i = 0; i < 100; i++)
+                    {
+                        pinGreen.Write(0);
+                        Thread.Sleep(100);
+                    }
 
-                bluePwm.Dispose();
-                greenPwm.Dispose();
-                redPwm.Dispose();
+                    redPwm.Dispose();
+                    pinRed.Write(0);
 
-                pinGreen.Write(0);
-                pinRed.Write(0);
-                pinBlue.Write(0);
-                Terminal.WriteLine("End of task");
-            }, cancellationToken);
+                    bluePwm.Dispose();
+                    redPwm.Dispose();
+
+                    pinRed.Write(0);
+                    pinBlue.Write(0);
+                }
+                Console.WriteLine("End of task");
+            });
     }
 }
